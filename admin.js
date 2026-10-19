@@ -127,7 +127,7 @@ document.getElementById("btnGoogle").onclick = async () => {
   const { error } = await db.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: "https://lumiqappoficial-dot.github.io/admin/"
+      redirectTo: "https://lumiqappoficial-dot.github.io/admin"
     }
   });
   if (error) aviso("No se pudo abrir Google: " + error.message, true);
