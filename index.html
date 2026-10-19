@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumiq · Panel de administracion</title>
+<style>
+  :root{
+    --neon:#39FF6A; --neon-2:#00E676;
+    --fondo:#060A07; --panel:#0C130E; --panel-2:#111A13;
+    --texto:#DFFFE8; --gris:#7FBF93; --borde:rgba(57,255,106,.18);
+    --peligro:#FF4D4D; --aviso:#FFC94D;
+    --glow:0 0 14px rgba(57,255,106,.35);
+    --base:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:
+      radial-gradient(1000px 500px at 80% -10%, rgba(57,255,106,.10), transparent 60%),
+      radial-gradient(800px 400px at -10% 110%, rgba(0,230,118,.08), transparent 60%),
+      var(--fondo);
+    color:var(--texto); font-size:var(--base); min-height:100vh;
+  }
+  header{
+    background:linear-gradient(90deg,#0A140D,#0E1D12 60%,#0A140D);
+    border-bottom:1px solid var(--borde);
+    padding:14px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    position:sticky; top:0; z-index:5; box-shadow:var(--glow);
+  }
+  header h1{font-size:1.25rem;flex:1;letter-spacing:.04em}
+  header h1 b{color:var(--neon);text-shadow:0 0 10px rgba(57,255,106,.6)}
+  .badge{
+    background:rgba(57,255,106,.12); color:var(--neon);
+    border:1px solid var(--borde); padding:5px 12px;
+    border-radius:999px; font-size:.8rem; font-weight:600;
+  }
+  main{max-width:1180px;margin:0 auto;padding:20px}
+  .card{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--borde); border-radius:14px; padding:18px;
+    margin-bottom:18px;
+  }
+  .card h2{font-size:1.05rem;margin-bottom:14px;color:var(--neon)}
+  label{display:block;font-weight:600;margin-bottom:6px;color:var(--gris);font-size:.9rem}
+  input,select{
+    width:100%; padding:12px; border:1px solid var(--borde);
+    border-radius:8px; font-size:1rem; font-family:inherit;
+    background:#0A110C; color:var(--texto);
+  }
+  input:focus,select:focus{outline:2px solid var(--neon);box-shadow:var(--glow)}
+  .fila{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .fila>*{flex:1;min-width:170px}
+  .fila .campo{margin-bottom:10px}
+  button{
+    background:linear-gradient(180deg,var(--neon),var(--neon-2)); color:#04140A;
+    border:0; padding:13px 20px; border-radius:8px; font-size:1rem; font-weight:700;
+    font-family:inherit; cursor:pointer; transition:.15s;
+  }
+  button:hover{box-shadow:var(--glow);filter:brightness(1.05)}
+  button.sec{background:transparent;color:var(--neon);border:1px solid var(--neon)}
+  button.peligro{background:var(--peligro);color:#fff}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.google{
+    display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    background:#fff;color:#3C4043;border:1px solid #DADCE0;padding:14px 20px;font-weight:600;
+  }
+  button.google:hover{background:#F7F8F8;box-shadow:none}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:11px 8px;text-align:left;border-bottom:1px solid var(--borde);vertical-align:middle}
+  th{font-size:.8rem;color:var(--gris);text-transform:uppercase;letter-spacing:.05em}
+  tbody tr:hover{background:rgba(57,255,106,.05)}
+  .codigo{
+    font-family:ui-monospace,Consolas,monospace;font-size:1.6rem;font-weight:700;
+    letter-spacing:.28em;color:var(--neon);text-shadow:0 0 12px rgba(57,255,106,.7);
+  }
+  .chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700}
+  .chip.ok{background:rgba(57,255,106,.15);color:var(--neon);border:1px solid var(--borde)}
+  .chip.no{background:rgba(255,77,77,.15);color:#FF8080}
+  .chip.pend{background:rgba(255,201,77,.15);color:var(--aviso)}
+  .oculto{display:none !important}
+  #login{max-width:440px;margin:70px auto;text-align:center}
+  #login .logo{font-size:2.2rem;font-weight:800;letter-spacing:.2em;color:var(--neon);text-shadow:0 0 18px rgba(57,255,106,.8);margin-bottom:6px}
+  #login .sub{color:var(--gris);margin-bottom:22px;font-size:.92rem}
+  .aviso{background:rgba(255,201,77,.12);border:1px solid rgba(255,201,77,.4);color:var(--aviso);padding:12px 14px;border-radius:8px;margin-bottom:16px;font-size:.88rem;text-align:left}
+  #msgLogin{min-height:24px;font-size:.9rem;font-weight:600}
+  .info{font-size:.85rem;color:var(--gris);margin-top:8px}
+  .acciones{display:flex;gap:8px;flex-wrap:wrap}
+  .vacio{text-align:center;color:var(--gris);padding:26px}
+  .barra-filtros{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .barra-filtros button.sec.on{background:var(--neon);color:#04140A}
+  nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  nav button{background:var(--panel);color:var(--gris);border:1px solid var(--borde);padding:10px 16px;font-size:.9rem;font-weight:600;border-radius:999px}
+  nav button.on{background:linear-gradient(180deg,var(--neon),var(--neon-2));color:#04140A;box-shadow:var(--glow)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+  .stat{background:var(--panel-2);border:1px solid var(--borde);border-radius:12px;padding:16px;text-align:center}
+  .stat .n{font-size:1.9rem;font-weight:800;color:var(--neon);text-shadow:0 0 12px rgba(57,255,106,.5)}
+  .stat .t{font-size:.82rem;color:var(--gris);margin-top:4px;text-transform:uppercase;letter-spacing:.05em}
+</style>
+</head>
+<body>
+<!-- ================= LOGIN ================= -->
+<section id="login" class="card">
+  <div class="logo">LUMIQ</div>
+  <div class="sub">Panel de administracion · 100% Supabase</div>
+  <div class="aviso">
+    Solo entra la cuenta del administrador. Cualquier otra cuenta Google se
+    cierra automaticamente.
+  </div>
+  <button id="btnGoogle" class="google">
+    <span style="font-size:1.2rem">G</span> Entrar con Google
+  </button>
+  <div class="fila" style="margin-top:14px;text-align:left">
+    <div class="campo">
+      <label for="loginCorreo">Correo del administrador</label>
+      <input id="loginCorreo" type="email" placeholder="admin@correo.com" autocomplete="username">
+    </div>
+    <div class="campo">
+      <label for="loginClave">Contrasena</label>
+      <input id="loginClave" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+  </div>
+  <button id="btnEntrarClave" style="width:100%">Entrar con correo y contrasena</button>
+  <p id="msgLogin"></p>
+</section>
+
+<!-- ================= PANEL ================= -->
+<section id="panel" class="oculto">
+  <header>
+    <h1><b>L</b>UMIQ · Panel</h1>
+    <span class="badge" id="correoAdmin"></span>
+    <span class="badge oculto" id="selloAdmin" title="Cuenta administrativa verificada">Administrador verificado</span>
+    <button class="sec" id="btnTamano">Letra: normal</button>
+    <button class="peligro" id="btnSalir">Salir</button>
+  </header>
+
+  <main>
+    <nav id="menu">
+      <button data-vista="inicio" class="on">Inicio</button>
+      <button data-vista="codigos">Codigos 6 digitos</button>
+      <button data-vista="usuarios">Usuarios</button>
+      <button data-vista="dispositivos">Dispositivos</button>
+      <button data-vista="chats">Chats</button>
+      <button data-vista="reportes">Reportes</button>
+      <button data-vista="tienda">Tienda</button>
+      <button data-vista="moneda">Moneda</button>
+      <button data-vista="auditoria">Auditoria</button>
+      <button data-vista="config">Config</button>
+    </nav>
+
+    <!-- ---------- INICIO ---------- -->
+    <section class="vista" id="vista-inicio">
+      <div class="card">
+        <h2 style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>Resumen general</span>
+          <button class="sec" id="btnRefrescar">Actualizar</button>
+        </h2>
+        <div class="stats">
+          <div class="stat"><div class="n" id="stUsuarios">-</div><div class="t">Usuarios</div></div>
+          <div class="stat"><div class="n" id="stCodigos">-</div><div class="t">Codigos vivos</div></div>
+          <div class="stat"><div class="n" id="stMensajes">-</div><div class="t">Mensajes 7 dias</div></div>
+          <div class="stat"><div class="n" id="stConversaciones">-</div><div class="t">Conversaciones</div></div>
+          <div class="stat"><div class="n" id="stReportes">-</div><div class="t">Reportes</div></div>
+          <div class="stat"><div class="n" id="stProductos">-</div><div class="t">Productos</div></div>
+          <div class="stat"><div class="n" id="stPedidos">-</div><div class="t">Pedidos</div></div>
+          <div class="stat"><div class="n" id="stSaldoTotal">-</div><div class="t">Saldo en custodia</div></div>
+        </div>
+        <p class="info" id="infoMantenimiento"></p>
+      </div>
+    </section>
+
+    <!-- ---------- CODIGOS ---------- -->
+    <section class="vista oculto" id="vista-codigos">
+      <div class="card">
+        <h2>1. Generar codigo para un numero</h2>
+        <div class="fila">
+          <div class="campo">
+            <label for="numCodigo">Numero (solo digitos)</label>
+            <input id="numCodigo" placeholder="51987654321" inputmode="numeric">
+          </div>
+          <div class="campo">
+            <label for="nombreCodigo">Nombre (opcional)</label>
+            <input id="nombreCodigo" placeholder="Como se llama la persona">
+          </div>
+        </div>
+        <div class="acciones">
+          <button id="btnGenerar">Generar codigo</button>
+        </div>
+        <div id="resultado" style="margin-top:16px"></div>
+        <p class="info">
+          El codigo vive en la tabla <b>codigos</b> y solo el panel puede leerlo
+          (RLS). Caduca en 10 minutos y sirve una sola vez.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>2. Codigos generados por la app</span>
+          <button class="sec" id="btnActualizar">Actualizar</button>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Cuando alguien escribe su numero en el telefono, la app llama a la
+          RPC <b>crear_codigo</b>. Manda el codigo por WhatsApp o correo.
+        </p>
+        <p class="info" id="estadoDirecto" style="margin-bottom:12px;color:var(--neon);font-weight:600"></p>
+        <div id="tablaSolicitudes"></div>
+      </div>
+    </section>
+
+    <!-- ---------- USUARIOS ---------- -->
+    <section class="vista oculto" id="vista-usuarios">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>1. Usuarios registrados</span>
+          <button class="sec" id="btnActualizarUsu">Actualizar</button>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Cambia rol, activa/desactiva o pon el distintivo de verificado.
+          Solo el administrador lee esta tabla entera (RLS).
+        </p>
+        <div id="tablaUsuarios"></div>
+      </div>
+
+      <div class="card">
+        <h2>2. Verificacion de numeros (distintivo)</h2>
+        <div class="fila">
+          <div class="campo">
+            <label for="numVerif">Numero a verificar</label>
+            <input id="numVerif" placeholder="51987654321" inputmode="numeric">
+          </div>
+          <div class="campo">
+            <label for="notaVerif">Nota interna</label>
+            <input id="notaVerif" placeholder="Ej: cliente de la tienda">
+          </div>
+        </div>
+        <div class="acciones" style="margin-bottom:16px">
+          <button id="btnVerificar">Marcar verificado</button>
+          <button class="sec" id="btnQuitarVerif">Quitar verificacion</button>
+        </div>
+        <div id="tablaVerificados"></div>
+      </div>
+    </section>
+
+    <!-- ---------- DISPOSITIVOS ---------- -->
+    <section class="vista oculto" id="vista-dispositivos">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>1. Dispositivos que entran a la app</span>
+          <button class="sec" id="btnActualizarDisp">Actualizar</button>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Cada equipo escribe sus datos reales: marca, modelo, Android,
+          pantalla, red y pais. Sirve para desvincular equipos viejos.
+        </p>
+        <div id="tablaDispositivos"></div>
+        <h2 style="margin-top:22px">2. Perfiles guardados</h2>
+        <p class="info" style="margin-bottom:12px">
+          Lo que cada persona escribio en "Editar perfil" (tabla usuarios).
+        </p>
+        <div id="tablaPerfiles"></div>
+      </div>
+    </section>
+
+    <!-- ---------- CHATS ---------- -->
+    <section class="vista oculto" id="vista-chats">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>1. Conversaciones</span>
+          <button class="sec" id="btnActualizarChats">Actualizar</button>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Pulsa "Ver mensajes" para leer el ultimo chat. Los mensajes caducan
+          a los 7 dias.
+        </p>
+        <div id="tablaConversaciones"></div>
+      </div>
+      <div class="card">
+        <h2 id="tituloChat">2. Mensajes</h2>
+        <div id="tablaMensajesChat"></div>
+      </div>
+    </section>
+
+    <!-- ---------- REPORTES ---------- -->
+    <section class="vista oculto" id="vista-reportes">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>Reportes de usuarios</span>
+          <button class="sec" id="btnActualizarReportes">Actualizar</button>
+        </h2>
+        <div id="tablaReportes"></div>
+      </div>
+    </section>
+
+    <!-- ---------- TIENDA ---------- -->
+    <section class="vista oculto" id="vista-tienda">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>1. Negocios</span>
+          <button class="sec" id="btnActualizarNeg">Actualizar</button>
+        </h2>
+        <div id="tablaNegocios"></div>
+      </div>
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>2. Productos</span>
+          <span class="acciones">
+            <button id="btnSubirProducto">Subir producto</button>
+            <button class="sec" id="btnActualizarProd">Actualizar</button>
+          </span>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Solo el administrador verificado puede publicar. El precio se guarda
+          en centavos (100 = Bs 1,00).
+        </p>
+
+        <!-- Formulario de subida / edicion (se rellena desde admin.js) -->
+        <div id="formularioProducto" class="oculto" style="border:1px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:16px;background:var(--panel-2)">
+          <h3 id="tituloFormProducto" style="color:var(--neon);margin-bottom:12px">Nuevo producto</h3>
+          <div class="fila">
+            <div class="campo">
+              <label for="pNombre">Nombre *</label>
+              <input id="pNombre" placeholder="Ej: Camisa negra">
+            </div>
+            <div class="campo">
+              <label for="pPrecio">Precio en Bs (con decimales) *</label>
+              <input id="pPrecio" type="number" step="0.01" min="0" placeholder="15.00">
+            </div>
+            <div class="campo">
+              <label for="pMoneda">Moneda</label>
+              <select id="pMoneda">
+                <option value="BOB">BOB (Boliviano)</option>
+                <option value="USD">USD (Dolar)</option>
+              </select>
+            </div>
+          </div>
+          <div class="fila">
+            <div class="campo">
+              <label for="pCategoria">Categoria *</label>
+              <input id="pCategoria" placeholder="Ropa">
+            </div>
+            <div class="campo">
+              <label for="pStock">Inventario (stock) *</label>
+              <input id="pStock" type="number" min="0" step="1" placeholder="10">
+            </div>
+            <div class="campo">
+              <label for="pEstado">Estado de publicacion</label>
+              <select id="pEstado">
+                <option value="activo">activo (visible en la tienda)</option>
+                <option value="pausado">pausado (oculto)</option>
+                <option value="agotado">agotado</option>
+              </select>
+            </div>
+          </div>
+          <div class="campo">
+            <label for="pDescripcion">Descripcion</label>
+            <textarea id="pDescripcion" rows="3" placeholder="Descripcion del producto..." style="width:100%;padding:12px;border:1px solid var(--borde);border-radius:8px;font-size:1rem;font-family:inherit;background:#0A110C;color:var(--texto)"></textarea>
+          </div>
+
+          <label style="margin-top:6px">Imagenes del producto</label>
+          <div id="contImagenes" class="acciones" style="margin-bottom:10px"></div>
+          <div class="fila">
+            <div class="campo">
+              <label for="pimgUrl">1) Pegar URL (GitHub, pagina, etc.)</label>
+              <input id="pimgUrl" placeholder="https://... o https://raw.githubusercontent.com/...">
+            </div>
+            <div class="campo">
+              <label for="pimgArchivo">2) Subir archivo al Storage</label>
+              <input id="pimgArchivo" type="file" accept="image/*" style="padding:8px">
+            </div>
+          </div>
+          <div class="acciones">
+            <button class="sec" id="btnAgregarUrl">+ Agregar URL</button>
+            <button class="sec" id="btnSubirStorage">Subir a Storage</button>
+          </div>
+          <p class="info">
+            Storage: el archivo se sube al bucket <b>productos</b> de Supabase y
+            se anade la URL publica. GitHub: sube el archivo a tu repositorio y
+            pega aqui la URL cruda (raw).
+          </p>
+
+          <div class="acciones" style="margin-top:14px">
+            <button id="btnGuardarProducto">Guardar en Supabase</button>
+            <button class="sec" id="btnCancelarProducto">Cancelar</button>
+          </div>
+          <p class="info" id="estadoProducto"></p>
+        </div>
+
+        <div id="tablaProductos"></div>
+      </div>
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>3. Pedidos</span>
+          <button class="sec" id="btnActualizarPed">Actualizar</button>
+        </h2>
+        <div id="tablaPedidos"></div>
+      </div>
+    </section>
+
+    <!-- ---------- MONEDA ---------- -->
+    <section class="vista oculto" id="vista-moneda">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>1. Saldos (centavos)</span>
+          <button class="sec" id="btnActualizarSaldos">Actualizar</button>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Los montos se guardan en CENTAVOS. 100 = Bs 1,00.
+        </p>
+        <div id="tablaSaldos"></div>
+      </div>
+      <div class="card">
+        <h2>2. Ajuste manual de saldo (administrador)</h2>
+        <div class="fila">
+          <div class="campo">
+            <label for="ajusteNumero">Numero del usuario</label>
+            <input id="ajusteNumero" placeholder="51987654321" inputmode="numeric">
+          </div>
+          <div class="campo">
+            <label for="ajusteMonto">Monto en centavos (+ suma, - resta)</label>
+            <input id="ajusteMonto" placeholder="1000" inputmode="numeric">
+          </div>
+        </div>
+        <div class="acciones" style="margin-bottom:12px">
+          <button id="btnAjuste">Aplicar ajuste</button>
+        </div>
+        <p class="info" id="estadoAjuste"></p>
+      </div>
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>3. Transferencias recientes</span>
+          <button class="sec" id="btnActualizarTx">Actualizar</button>
+        </h2>
+        <div id="tablaTransferencias"></div>
+      </div>
+    </section>
+
+    <!-- ---------- AUDITORIA ---------- -->
+    <section class="vista oculto" id="vista-auditoria">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>Registro de auditoria</span>
+          <button class="sec" id="btnActualizarAud">Actualizar</button>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Toda operacion relevante queda registrada aqui.
+        </p>
+        <div id="tablaAuditoria"></div>
+      </div>
+    </section>
+
+    <!-- ---------- CONFIG ---------- -->
+    <section class="vista oculto" id="vista-config">
+      <div class="card">
+        <h2>1. Ajustes globales</h2>
+        <div class="fila">
+          <div class="campo">
+            <label for="avisoTexto">Aviso que ve la app</label>
+            <input id="avisoTexto" placeholder="Ej: Mantenimiento el domingo">
+          </div>
+          <div class="campo">
+            <label for="versionApp">Version de la app</label>
+            <input id="versionApp" placeholder="1.0.1">
+          </div>
+        </div>
+        <label style="margin-bottom:14px">
+          <input type="checkbox" id="chkMantenimiento" style="width:auto;vertical-align:middle">
+          Modo mantenimiento (la app lo muestra al abrir)
+        </label>
+        <div class="acciones">
+          <button id="btnGuardarConfig">Guardar configuracion</button>
+        </div>
+        <p class="info" id="estadoConfig"></p>
+      </div>
+      <div class="card">
+        <h2>2. Roles y permisos</h2>
+        <div id="tablaRoles"></div>
+      </div>
+      <div class="card">
+        <h2>3. Crear cuenta administrativa</h2>
+        <p class="info" style="margin-bottom:12px">
+          Crea una cuenta de administrador con sus datos personales y una
+          contrasena. Sin codigos ni numeros de telefono: solo correo y
+          contrasena. RLS en el servidor impide que cualquiera se asigne
+          el rol admin por su cuenta.
+        </p>
+        <div class="fila">
+          <div class="campo">
+            <label for="adminNombre">Nombre personal</label>
+            <input id="adminNombre" placeholder="Ej: Maria Lopez">
+          </div>
+          <div class="campo">
+            <label for="adminCorreo">Correo</label>
+            <input id="adminCorreo" type="email" placeholder="nuevo-admin@correo.com">
+          </div>
+          <div class="campo">
+            <label for="adminClave">Contrasena (minimo 6)</label>
+            <input id="adminClave" type="password" placeholder="••••••••" autocomplete="new-password">
+          </div>
+        </div>
+        <div class="acciones">
+          <button id="btnCrearAdmin">Crear cuenta admin</button>
+        </div>
+        <p class="info" id="estadoCrearAdmin"></p>
+      </div>
+    </section>
+
+  </main>
+</section>
+
+<script type="module" src="admin.js"></script>
+
+
+
+</body>
+</html>
