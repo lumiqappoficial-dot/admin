@@ -19,6 +19,17 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 // Utilidades
 // ---------------------------------------------------------------------
 
+/** Ejecuta una llamada de Supabase sin que un error rompa el flujo. */
+const ignorar = p => Promise.resolve(p).catch(() => {});
+
+/** Registra una accion en la auditoria sin bloquear ni romper nada. */
+function auditar(accion, tabla, registro, detalle) {
+  ignorar(db.rpc("registrar_auditoria", {
+    p_accion: accion, p_tabla: tabla, p_registro_id: registro,
+    ...(detalle !== undefined ? { p_detalle: detalle } : {})
+  }));
+}
+
 /** Deja solo digitos, sin signos. */
 function soloDigitos(v) {
   return (v || "").replace(/\D/g, "");
@@ -127,7 +138,9 @@ document.getElementById("btnGoogle").onclick = async () => {
   const { error } = await db.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: "https://lumiqappoficial-dot.github.io/admin"
+      // Vuelve a esta misma pagina. Esta URL debe estar en
+      // Supabase -> Authentication -> URL Configuration -> Redirect URLs.
+      redirectTo: window.location.origin + window.location.pathname
     }
   });
   if (error) aviso("No se pudo abrir Google: " + error.message, true);
@@ -145,11 +158,14 @@ document.getElementById("btnEntrarClave").onclick = async () => {
 
 document.getElementById("btnSalir").onclick = async () => {
   await db.auth.signOut();
+  panelAbierto = false;
   document.getElementById("panel").classList.add("oculto");
   document.getElementById("login").classList.remove("oculto");
   document.getElementById("selloAdmin").classList.add("oculto");
   aviso("");
 };
+
+let panelAbierto = false;
 
 function abrirPanel(usuario) {
   document.getElementById("login").classList.add("oculto");
@@ -158,25 +174,32 @@ function abrirPanel(usuario) {
   // Logo de verificado: solo se muestra si el servidor confirma que es admin.
   esAdminActual().then(ok =>
     document.getElementById("selloAdmin").classList.toggle("oculto", !ok));
-  CARGADORES.inicio && verVista("inicio");
+  verVista("inicio");
   arrancarRefresco();
 }
 
-db.auth.onAuthStateChange(async (_evento, sesion) => {
-  const u = sesion && sesion.user;
-  if (!u) return;   // sin sesion: se queda en el login
+/** Comprueba si la cuenta es admin y abre el panel (o la cierra). */
+async function validarSesion(u) {
   const correo = (u.email || "").toLowerCase();
-  const adminPorCorreo = correo === ADMIN.toLowerCase();
-  const adminPorRol = await esAdminActual();
-  if (adminPorCorreo || adminPorRol) {
-    await db.rpc("registrar_auditoria", {
-      p_accion: "login_panel", p_tabla: "auth", p_registro_id: u.id
-    }).catch(() => {});
+  const esAdmin = correo === ADMIN.toLowerCase() || await esAdminActual();
+  if (esAdmin) {
+    if (panelAbierto) return;   // evita reabrir en cada renovacion de token
+    panelAbierto = true;
     abrirPanel(u);
+    auditar("login_panel", "auth", u.id);
   } else {
     aviso("Esa cuenta no tiene permisos de administrador. Saliendo...", true);
     await db.auth.signOut();
   }
+}
+
+db.auth.onAuthStateChange((_evento, sesion) => {
+  const u = sesion && sesion.user;
+  if (!u) return;   // sin sesion: se queda en el login
+  // IMPORTANTE: no usar await dentro de este callback. Supabase mantiene un
+  // bloqueo interno mientras corre; si dentro se llama a db.rpc/db.from, se
+  // queda esperando para siempre y el panel nunca se abre. Se difiere.
+  setTimeout(() => validarSesion(u), 0);
 });
 
 // ---------------------------------------------------------------------
@@ -245,6 +268,8 @@ document.getElementById("btnRefrescar").onclick = () => CARGADORES.inicio();
 //  - Listado: tabla codigos (el panel SI la puede leer; la app no).
 // ---------------------------------------------------------------------
 
+let relojCodigoId = null;
+
 document.getElementById("btnGenerar").onclick = async () => {
   const numero = soloDigitos(document.getElementById("numCodigo").value);
   const nombre = document.getElementById("nombreCodigo").value.trim();
@@ -274,14 +299,13 @@ document.getElementById("btnGenerar").onclick = async () => {
     document.getElementById("btnCopiar").onclick = () => {
       if (navigator.clipboard) navigator.clipboard.writeText(data.codigo);
     };
-    setInterval(() => {
+    if (relojCodigoId) clearInterval(relojCodigoId);
+    relojCodigoId = setInterval(() => {
       const el = document.getElementById("relojCodigo");
       if (el) el.textContent = restante(data.expira);
     }, 1000);
     CARGADORES.codigos();
-    db.rpc("registrar_auditoria", {
-      p_accion: "generar_codigo_panel", p_tabla: "codigos", p_registro_id: numero
-    }).catch(() => {});
+    auditar("generar_codigo_panel", "codigos", numero);
   } catch (e) {
     cont.innerHTML = `<span class="chip no">${escapeHtml(e.message || e)}</span>`;
   } finally {
@@ -372,9 +396,7 @@ async function cargarUsuarios() {
 window.cambiarRol = async function (id, rol) {
   const { error } = await db.from("usuarios").update({ rol }).eq("id", id);
   if (error) return alert(error.message);
-  db.rpc("registrar_auditoria", {
-    p_accion: "cambiar_rol", p_tabla: "usuarios", p_registro_id: id, p_detalle: rol
-  }).catch(() => {});
+  auditar("cambiar_rol", "usuarios", id, rol);
 };
 
 window.alternarVerificado = async function (id, valor) {
@@ -422,9 +444,7 @@ document.getElementById("btnVerificar").onclick = async () => {
     numero, verificado: true, nota, actualizado: Date.now()
   }, { onConflict: "numero" });
   if (error) return alert(error.message);
-  db.rpc("registrar_auditoria", {
-    p_accion: "verificar_numero", p_tabla: "numeros", p_registro_id: numero
-  }).catch(() => {});
+  auditar("verificar_numero", "numeros", numero);
   cargarVerificados();
 };
 
@@ -479,9 +499,7 @@ window.desvincularDispositivo = async function (id) {
   const { error } = await db.from("dispositivos")
     .update({ activo: false }).eq("id", id);
   if (error) return alert(error.message);
-  db.rpc("registrar_auditoria", {
-    p_accion: "desvincular_dispositivo", p_tabla: "dispositivos", p_registro_id: id
-  }).catch(() => {});
+  auditar("desvincular_dispositivo", "dispositivos", id);
   cargarDispositivos();
 };
 
@@ -581,9 +599,7 @@ CARGADORES.reportes = async () => {
 window.cambiarReporte = async function (id, estado) {
   const { error } = await db.from("reportes").update({ estado }).eq("id", id);
   if (error) return alert(error.message);
-  db.rpc("registrar_auditoria", {
-    p_accion: "revisar_reporte", p_tabla: "reportes", p_registro_id: id, p_detalle: estado
-  }).catch(() => {});
+  auditar("revisar_reporte", "reportes", id, estado);
   CARGADORES.reportes();
 };
 
@@ -674,9 +690,7 @@ window.borrarProducto = async function (id) {
   if (!confirm("Borrar este producto de la tienda?")) return;
   const { error } = await db.from("productos").delete().eq("id", id);
   if (error) return alert(error.message);
-  db.rpc("registrar_auditoria", {
-    p_accion: "borrar_producto", p_tabla: "productos", p_registro_id: id
-  }).catch(() => {});
+  auditar("borrar_producto", "productos", id);
   cargarProductos();
 };
 
@@ -815,10 +829,7 @@ el("btnGuardarProducto").onclick = async () => {
         imagenes: imagenesProducto, actualizado: Date.now()
       }).eq("id", editandoProductoId);
       if (error) throw error;
-      db.rpc("registrar_auditoria", {
-        p_accion: "editar_producto_panel", p_tabla: "productos",
-        p_registro_id: editandoProductoId, p_detalle: nombre
-      }).catch(() => {});
+      auditar("editar_producto_panel", "productos", editandoProductoId, nombre);
       estadoForm("Producto actualizado: " + nombre + ".");
     } else {
       const { data, error } = await db.from("productos").insert({
@@ -827,10 +838,7 @@ el("btnGuardarProducto").onclick = async () => {
         creado: Date.now(), actualizado: Date.now()
       }).select("id").maybeSingle();
       if (error) throw error;
-      db.rpc("registrar_auditoria", {
-        p_accion: "subir_producto_panel", p_tabla: "productos",
-        p_registro_id: data && data.id, p_detalle: nombre
-      }).catch(() => {});
+      auditar("subir_producto_panel", "productos", data && data.id, nombre);
       estadoForm("Producto publicado: " + nombre + " (" + bs(centavos) + ").");
     }
     el("formularioProducto").classList.add("oculto");
@@ -869,9 +877,7 @@ window.cambiarEstadoPedido = async function (id, estado) {
   const { error } = await db.from("pedidos")
     .update({ estado, actualizado: Date.now() }).eq("id", id);
   if (error) return alert(error.message);
-  db.rpc("registrar_auditoria", {
-    p_accion: "cambiar_pedido", p_tabla: "pedidos", p_registro_id: id, p_detalle: estado
-  }).catch(() => {});
+  auditar("cambiar_pedido", "pedidos", id, estado);
   cargarPedidos();
 };
 
@@ -941,16 +947,13 @@ document.getElementById("btnAjuste").onclick = async () => {
 
   // 3) dejar constancia en movimientos y auditoria
   const tx = "ajuste-" + Date.now();
-  await db.from("movimientos").insert({
+  await ignorar(db.from("movimientos").insert({
     usuario_id: usu.id, transaction_id: tx, monto, moneda: "BOB",
     tipo: "ajuste", descripcion: "Ajuste del panel",
     contraparte_numero: usu.numero, contraparte_nombre: usu.nombre,
     creado: Date.now()
-  }).catch(() => {});
-  db.rpc("registrar_auditoria", {
-    p_accion: "ajuste_saldo", p_tabla: "saldos", p_registro_id: usu.id,
-    p_detalle: String(monto)
-  }).catch(() => {});
+  }));
+  auditar("ajuste_saldo", "saldos", usu.id, String(monto));
 
   estado.textContent = `Listo. ${usu.nombre || usu.numero}: ${bs(actual)} -> ${bs(nuevo)}.`;
   cargarSaldos();
@@ -1044,10 +1047,7 @@ document.getElementById("btnGuardarConfig").onclick = async () => {
   const { error } = await db.from("config")
     .upsert({ clave: "general", valor, actualizado: Date.now() }, { onConflict: "clave" });
   if (error) { estado.textContent = error.message; return; }
-  db.rpc("registrar_auditoria", {
-    p_accion: "guardar_config", p_tabla: "config", p_registro_id: "general",
-    p_detalle: JSON.stringify(valor)
-  }).catch(() => {});
+  auditar("guardar_config", "config", "general", JSON.stringify(valor));
   estado.textContent = "Configuracion guardada (" + fecha(Date.now()) + ").";
 };
 
@@ -1118,9 +1118,7 @@ document.getElementById("btnCrearAdmin").onclick = async () => {
     return;
   }
 
-  db.rpc("registrar_auditoria", {
-    p_accion: "crear_admin", p_tabla: "usuarios", p_registro_id: uid, p_detalle: correo
-  }).catch(() => {});
+  auditar("crear_admin", "usuarios", uid, correo);
 
   estado.textContent = "Listo. " + nombre + " ya puede entrar con correo y contrasena como administrador.";
   document.getElementById("adminNombre").value = "";
@@ -1130,4 +1128,3 @@ document.getElementById("btnCrearAdmin").onclick = async () => {
 
 // Restaura el tamano de letra elegido antes de entrar.
 aplicarTamano();
-
