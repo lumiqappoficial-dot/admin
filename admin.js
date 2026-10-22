@@ -1077,6 +1077,99 @@ document.getElementById("btnActualizarRecargas").onclick = () => cargarRecargas(
 document.getElementById("btnActualizarProdSolic").onclick = () => cargarSolicitudesProducto();
 
 // ---------------------------------------------------------------------
+// SUBDAS DE PAQUETES PARA RECARGAS
+// ---------------------------------------------------------------------
+
+/** Guarda un paquete de recarga en la base de datos. */
+window.subirPaquete = async function () {
+  const nombre = document.getElementById("paqueteNombre").value.trim();
+  const monto = parseInt(document.getElementById("paqueteMonto").value || "0", 10);
+  const moneda = document.getElementById("paqueteMoneda").value;
+  const tipo = document.getElementById("paqueteTipo").value;
+  const cantidad = parseInt(document.getElementById("paqueteCantidad").value || "0", 10);
+  const descripcion = document.getElementById("paqueteDescripcion").value.trim();
+  const estado = document.getElementById("estadoPaquete");
+
+  if (!nombre) { estado.textContent = "Escribe un nombre para el paquete."; return; }
+  if (isNaN(monto) || monto <= 0) { estado.textContent = "Monto inválido (debe ser mayor a 0)."; return; }
+  if (isNaN(cantidad) || cantidad <= 0) { estado.textContent = "Cantidad inválida (debe ser mayor a 0)."; return; }
+
+  try {
+    const { error } = await db.from("paquetes_recarga").insert({
+      nombre: nombre,
+      monto: monto,
+      moneda: moneda,
+      tipo: tipo,
+      cantidad: cantidad,
+      descripcion: descripcion,
+      creado: Date.now(),
+      actualizado: Date.now()
+    });
+    if (error) { estado.textContent = "Error al subir: " + error.message; return; }
+    estado.textContent = "Paquete subido correctamente.";
+    document.getElementById("paqueteNombre").value = "";
+    document.getElementById("paqueteMonto").value = "";
+    document.getElementById("paqueteCantidad").value = "";
+    document.getElementById("paqueteDescripcion").value = "";
+    cargarPaquetes();
+  } catch (e) {
+    estado.textContent = "Error inesperado: " + e.message;
+  }
+};
+
+/** Carga la lista de paquetes de recarga. */
+window.cargarPaquetes = async function () {
+  const cont = document.getElementById("tablaPaquetes");
+  try {
+    const { data, error } = await db
+      .from("paquetes_recarga")
+      .select("id, nombre, monto, moneda, tipo, cantidad, descripcion, activo, creado")
+      .order("creado", { ascending: false }).limit(100);
+    if (error) { cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`; return; }
+    const filas = (data || []).map(p => `
+      <tr>
+        <td>${escapeHtml(p.nombre)}</td>
+        <td style="color:var(--neon);font-weight:700">${bs(p.monto)}</td>
+        <td>${escapeHtml(p.moneda || "-")}</td>
+        <td>${escapeHtml(p.tipo || "-")}</td>
+        <td>${p.cantidad ?? "-"}</td>
+        <td>${p.descripcion ? escapeHtml(p.descripcion) : "-"}</td>
+        <td><span class="chip ${p.activo ? "ok" : "pend"}">${p.activo ? "activo" : "inactivo"}</span></td>
+        <td class="acciones">
+          <button class="sec" onclick="activarPaquete('${escapeHtml(p.id)}', true)">Activar</button>
+          <button class="peligro" onclick="activarPaquete('${escapeHtml(p.id)}', false)">Inactivar</button>
+        </td>
+      </tr>
+    `);
+    tabla(cont, ["Paquete", "Monto", "Moneda", "Tipo", "Cant.", "Descripcion", "Estado", ""], filas);
+  } catch (e) {
+    cont.innerHTML = `<div class="vacio">Error: ${escapeHtml(e.message)}</div>`;
+  }
+};
+
+/** Activa o inactiva un paquete existente. */
+window.activarPaquete = async function (id, activo) {
+  try {
+    const { error } = await db
+      .from("paquetes_recarga")
+      .update({ activo: activo, actualizado: Date.now() })
+      .eq("id", id);
+    if (error) { alert("No se pudo actualizar: " + error.message); return; }
+    cargarPaquetes();
+  } catch (e) {
+    alert("Error: " + e.message);
+  }
+};
+
+// Evento para el botón de subir paquete
+document.getElementById("btnSubirPaquete").onclick = () => subirPaquete();
+
+// Carga los paquetes al abrir la vista de recargas
+if (document.getElementById("vista-solicitudes")) {
+  setTimeout(cargarPaquetes, 500);
+}
+
+// ---------------------------------------------------------------------
 // AUDITORIA
 // ---------------------------------------------------------------------
 

@@ -447,6 +447,61 @@
           Los montos estan en CENTAVOS.
         </p>
         <div id="tablaRecargas"></div>
+        <hr style="border-color:rgba(57,255,106,.2);margin:16px 0">
+        <div class="card">
+          <h2>1b. Subir paquetes en recargas</h2>
+          <p class="info">
+            Carga paquetes de recarga para usuarios o para distribución gratuita.
+            Los paquetes se guardan en la tabla <b>paquetes_recarga</b> y pueden
+            activarse/desactivarse.
+          </p>
+          <div class="fila">
+            <div class="campo" style="flex:1;min-width:170px">
+              <label for="paqueteNombre">Nombre del paquete</label>
+              <input id="paqueteNombre" placeholder="Ej: Paquete 100 sesiones">
+            </div>
+            <div class="campo" style="flex:1;min-width:170px">
+              <label for="paqueteMonto">Monto (cents)</label>
+              <input id="paqueteMonto" placeholder="10000" inputmode="numeric">
+            </div>
+            <div class="campo" style="flex:1;min-width:170px">
+              <label for="paqueteMoneda">Moneda</label>
+              <select id="paqueteMoneda">
+                <option value="BOB">BOB</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </div>
+          </div>
+          <div class="fila" style="margin-top:10px">
+            <div class="campo" style="flex:1;min-width:170px">
+              <label for="paqueteTipo">Tipo de paquete</label>
+              <select id="paqueteTipo">
+                <option value="recarga">Recarga (dinero)</option>
+                <option value="credito">Recarga (credito)</option>
+                <option value="free">Recarga (free / gratis)</option>
+                <option value="maximo">Paquete Máximo</option>
+                <option value="minimo">Paquete Mínimo</option>
+                <option value="otro">Otro recargo de dinero</option>
+              </select>
+            </div>
+            <div class="campo" style="flex:1;min-width:170px">
+              <label for="paqueteCantidad">Cantidad de unidades</label>
+              <input id="paqueteCantidad" placeholder="1" inputmode="numeric">
+            </div>
+            <div class="campo" style="flex:1;min-width:170px">
+              <label for="paqueteDescripcion">Descripción</label>
+              <input id="paqueteDescripcion" placeholder="Descripcion opcional">
+            </div>
+          </div>
+          <div class="acciones">
+            <button id="btnSubirPaquete">Subir paquete</button>
+          </div>
+          <p class="info" id="estadoPaquete"></p>
+</div>
+        <div id="tablaPaquetes"></div>
+      </div>
+        </div>
       </div>
       <div class="card">
         <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
