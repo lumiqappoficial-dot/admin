@@ -982,6 +982,101 @@ document.getElementById("btnActualizarSaldos").onclick = () => cargarSaldos();
 document.getElementById("btnActualizarTx").onclick = () => cargarTransferencias();
 
 // ---------------------------------------------------------------------
+// SOLICITUDES (recarga QR y productos)
+// Las decisiones pasan por las RPC resolver_solicitud_*: el panel nunca
+// escribe el saldo a mano, la RPC lo hace y deja el movimiento.
+// ---------------------------------------------------------------------
+
+CARGADORES.solicitudes = async () => {
+  await Promise.all([cargarRecargas(), cargarSolicitudesProducto()]);
+};
+
+/** Etiqueta visual del estado de una solicitud. */
+function chipEstado(estado) {
+  const e = (estado || "").toLowerCase();
+  const clase = e === "aprobada" ? "ok" : e === "rechazada" ? "no" : "pend";
+  return `<span class="chip ${clase}">${escapeHtml(estado || "-")}</span>`;
+}
+
+/** Botones de aprobar/rechazar para una solicitud pendiente. */
+function botonesResolver(tipo, id) {
+  return `<button class="sec" onclick="resolverSolicitud('${tipo}','${escapeHtml(id)}',true)">Aprobar</button>
+          <button class="peligro" onclick="resolverSolicitud('${tipo}','${escapeHtml(id)}',false)">Rechazar</button>`;
+}
+
+async function cargarRecargas() {
+  const cont = document.getElementById("tablaRecargas");
+  const { data, error } = await db
+    .from("solicitudes_recarga")
+    .select("id, usuario_id, usuario_nombre, numero_cuenta, nombre_depositante, monto, moneda, metodo, referencia, estado, motivo, creado")
+    .order("creado", { ascending: false }).limit(100);
+  if (error) { cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`; return; }
+
+  const filas = (data || []).map(s => `<tr>
+    <td>${fecha(s.creado)}</td>
+    <td>${escapeHtml(s.usuario_nombre || "-")}</td>
+    <td>${escapeHtml(s.numero_cuenta || "-")}</td>
+    <td>${escapeHtml(s.nombre_depositante || "-")}</td>
+    <td style="color:var(--neon);font-weight:700">${bs(s.monto)}</td>
+    <td>${escapeHtml(s.metodo || "-")}</td>
+    <td>${escapeHtml(s.referencia || "-")}</td>
+    <td>${chipEstado(s.estado)}</td>
+    <td>${escapeHtml(s.motivo || "-")}</td>
+    <td class="acciones">${s.estado === "pendiente"
+      ? botonesResolver("recarga", s.id) : "-"}</td>
+  </tr>`);
+  tabla(cont, ["Cuando", "Usuario", "Cuenta", "Depositante", "Monto", "Metodo",
+    "Referencia", "Estado", "Motivo", ""], filas);
+}
+
+async function cargarSolicitudesProducto() {
+  const cont = document.getElementById("tablaProdSolic");
+  const { data, error } = await db
+    .from("solicitudes_producto")
+    .select("id, usuario_id, usuario_nombre, producto_nombre, categoria, proveedor, referencia, monto, moneda, estado, motivo, creado")
+    .order("creado", { ascending: false }).limit(100);
+  if (error) { cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`; return; }
+
+  const filas = (data || []).map(s => `<tr>
+    <td>${fecha(s.creado)}</td>
+    <td>${escapeHtml(s.usuario_nombre || "-")}</td>
+    <td>${escapeHtml(s.producto_nombre || "-")}</td>
+    <td>${escapeHtml(s.categoria || "-")}</td>
+    <td>${escapeHtml(s.proveedor || "-")}</td>
+    <td>${escapeHtml(s.referencia || "-")}</td>
+    <td style="color:var(--neon);font-weight:700">${bs(s.monto)}</td>
+    <td>${chipEstado(s.estado)}</td>
+    <td>${escapeHtml(s.motivo || "-")}</td>
+    <td class="acciones">${s.estado === "pendiente"
+      ? botonesResolver("producto", s.id) : "-"}</td>
+  </tr>`);
+  tabla(cont, ["Cuando", "Usuario", "Producto", "Categoria", "Proveedor",
+    "Referencia", "Monto", "Estado", "Motivo", ""], filas);
+}
+
+/** Aprueba o rechaza una solicitud usando la RPC correspondiente. */
+window.resolverSolicitud = async function (tipo, id, aprobar) {
+  let motivo = "";
+  if (!aprobar) {
+    const respuesta = prompt("Motivo del rechazo:", "Sin saldo suficiente");
+    if (respuesta === null) return;   // el admin cancelo
+    motivo = respuesta;
+  }
+
+  const rpc = tipo === "recarga" ? "resolver_solicitud_recarga" : "resolver_solicitud_producto";
+  const { error } = await db.rpc(rpc, { p_id: id, p_aprobar: aprobar, p_motivo: motivo });
+  if (error) { alert("No se pudo resolver: " + error.message); return; }
+
+  // La auditoria la graba la propia RPC (resolver_solicitud_*) dentro de la
+  // misma transaccion que aplica el saldo. Si se audita aqui tambien se
+  // duplicaria el registro, asi que el panel NO audita de nuevo.
+  await CARGADORES.solicitudes();
+};
+
+document.getElementById("btnActualizarRecargas").onclick = () => cargarRecargas();
+document.getElementById("btnActualizarProdSolic").onclick = () => cargarSolicitudesProducto();
+
+// ---------------------------------------------------------------------
 // AUDITORIA
 // ---------------------------------------------------------------------
 
@@ -1125,6 +1220,3 @@ document.getElementById("btnCrearAdmin").onclick = async () => {
   document.getElementById("adminCorreo").value = "";
   document.getElementById("adminClave").value = "";
 };
-
-// Restaura el tamano de letra elegido antes de entrar.
-aplicarTamano();

@@ -144,6 +144,7 @@
       <button data-vista="reportes">Reportes</button>
       <button data-vista="tienda">Tienda</button>
       <button data-vista="moneda">Moneda</button>
+      <button data-vista="solicitudes">Solicitudes</button>
       <button data-vista="auditoria">Auditoria</button>
       <button data-vista="config">Config</button>
     </nav>
@@ -431,6 +432,31 @@
           <button class="sec" id="btnActualizarTx">Actualizar</button>
         </h2>
         <div id="tablaTransferencias"></div>
+      </div>
+    </section>
+
+    <!-- ---------- SOLICITUDES ---------- -->
+    <section class="vista oculto" id="vista-solicitudes">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>1. Recargas QR pendientes</span>
+          <button class="sec" id="btnActualizarRecargas">Actualizar</button>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Al aprobar se acredita el saldo del usuario y se registra el movimiento.
+          Los montos estan en CENTAVOS.
+        </p>
+        <div id="tablaRecargas"></div>
+      </div>
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>2. Solicitudes de productos</span>
+          <button class="sec" id="btnActualizarProdSolic">Actualizar</button>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Al aprobar se descuenta el saldo del usuario. Si no alcanza, la RPC lo rechaza.
+        </p>
+        <div id="tablaProdSolic"></div>
       </div>
     </section>
 
