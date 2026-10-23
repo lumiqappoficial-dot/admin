@@ -388,6 +388,9 @@ async function cargarUsuarios() {
               onclick="alternarActivo('${u.id}', ${!u.activo})">
         ${u.activo ? "Desactivar" : "Reactivar"}
       </button>
+      <button class="peligro" onclick="eliminarUsuario('${u.id}', '${escapeHtml(u.nombre || "-")}')">
+        Eliminar
+      </button>
     </td>
   </tr>`);
   tabla(cont, ["Nombre", "Numero", "Correo", "Empresa", "Sello", "Rol", "Estado", ""], filas);
@@ -409,6 +412,15 @@ window.alternarActivo = async function (id, valor) {
   if (!valor && !confirm("Dar de baja este usuario? Dejara de poder entrar.")) return;
   const { error } = await db.from("usuarios").update({ activo: valor }).eq("id", id);
   if (error) return alert(error.message);
+  cargarUsuarios();
+};
+
+window.eliminarUsuario = async function (id, nombre) {
+  if (!confirm("¿Eliminar completamente a " + nombre + "?\nSe borrarán sus pedidos, saldo, movimientos, transferencias y todos sus datos. Esta acción no se puede deshacer.")) return;
+  const { data, error } = await db.rpc("eliminar_usuario_completo", { p_id: id });
+  if (error) { alert("Error: " + error.message); return; }
+  if (!data || !data.ok) { alert(data ? data.error : "Error desconocido"); return; }
+  alert(data.mensaje || "Usuario eliminado.");
   cargarUsuarios();
 };
 
