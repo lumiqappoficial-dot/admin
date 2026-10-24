@@ -1252,7 +1252,218 @@ document.getElementById("btnGuardarConfig").onclick = async () => {
 };
 
 // ---------------------------------------------------------------------
-// CREAR CUENTA ADMINISTRATIVA (correo + contrasena, sin codigos)
+// RETIROS: solicitudes de retiro pendientes (admin aprueba/rechaza)
+// ---------------------------------------------------------------------
+CARGADORES.retiros = async () => {
+  const cont = document.getElementById("tablaRetiros");
+  const { data, error } = await db
+    .from("solicitudes_retiro")
+    .select("id, usuario_id, usuario_nombre, cuenta_retiro_id, monto_cents, motivo, estado, creado")
+    .order("creado", { ascending: false }).limit(100);
+  if (error) { cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`; return; }
+
+  const filas = (data || []).map(s => `<tr>
+    <td>${fecha(s.creado)}</td>
+    <td>${escapeHtml(s.usuario_nombre || "-")}</td>
+    <td>${escapeHtml(s.cuenta_retiro_id || "-")}</td>
+    <td style="color:var(--neon);font-weight:700">${bs(s.monto_cents)}</td>
+    <td>${escapeHtml(s.motivo || "-")}</td>
+    <td><span class="chip ${s.estado === "aprobada" ? "ok" : s.estado === "rechazada" ? "no" : "pend"}">${escapeHtml(s.estado || "-")}</span></td>
+    <td>
+      ${s.estado === "pendiente" ? `
+        <button class="sec" onclick="resolverRetiro('${escapeHtml(s.id)}', true)">Aprobar</button>
+        <button class="peligro" onclick="resolverRetiro('${escapeHtml(s.id)}', false)">Rechazar</button>
+      ` : "-" }
+    </td>
+  </tr>`);
+  tabla(cont, ["Cuando", "Usuario", "Cuenta", "Monto", "Motivo", "Estado", ""], filas);
+};
+
+window.resolverRetiro = async function (id, aprobar) {
+  const motivo = prompt("Motivo (opcional):") || "";
+  try {
+    const { data, error } = await db.rpc("resolver_solicitud_retiro", {
+      p_solicitud_id: id, p_aprobar: aprobar, p_motivo: motivo
+    });
+    if (error) { alert("Error: " + error.message); return; }
+    auditar(aprobar ? "aprobar_retiro" : "rechazar_retiro", "solicitudes_retiro", id, motivo);
+    CARGADORES.retiros();
+  } catch (e) { alert("Error: " + e.message); }
+};
+
+document.getElementById("btnActualizarRetiros").onclick = () => CARGADORES.retiros();
+
+// ---------------------------------------------------------------------
+// PAGOS SERVICIOS: pagos de servicios pendientes (admin aprueba/rechaza)
+// ---------------------------------------------------------------------
+CARGADORES["pagos-servicios"] = async () => {
+  const cont = document.getElementById("tablaPagosServicios");
+  const { data, error } = await db
+    .from("pagos_servicios")
+    .select("id, usuario_id, proveedor, referencia, monto, moneda, estado, creado")
+    .order("creado", { ascending: false }).limit(100);
+  if (error) { cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`; return; }
+
+  const filas = (data || []).map(p => `<tr>
+    <td>${fecha(p.creado)}</td>
+    <td>${escapeHtml(p.proveedor || "-")}</td>
+    <td>${escapeHtml(p.referencia || "-")}</td>
+    <td style="color:var(--neon);font-weight:700">${bs(p.monto)}</td>
+    <td>${escapeHtml(p.moneda || "BOB")}</td>
+    <td><span class="chip ${p.estado === "aprobado" ? "ok" : p.estado === "rechazado" ? "no" : "pend"}">${escapeHtml(p.estado || "-")}</span></td>
+    <td>
+      ${p.estado === "pendiente" ? `
+        <button class="sec" onclick="resolverPagoServicio('${escapeHtml(p.id)}', true)">Aprobar</button>
+        <button class="peligro" onclick="resolverPagoServicio('${escapeHtml(p.id)}', false)">Rechazar</button>
+      ` : "-" }
+    </td>
+  </tr>`);
+  tabla(cont, ["Cuando", "Proveedor", "Referencia", "Monto", "Moneda", "Estado", ""], filas);
+};
+
+window.resolverPagoServicio = async function (id, aprobar) {
+  const motivo = prompt("Motivo (opcional):") || "";
+  try {
+    const { data, error } = await db.rpc("resolver_pago_servicio", {
+      p_pago_id: id, p_aprobar: aprobar, p_motivo: motivo
+    });
+    if (error) { alert("Error: " + error.message); return; }
+    auditar(aprobar ? "aprobar_pago_servicio" : "rechazar_pago_servicio", "pagos_servicios", id, motivo);
+    CARGADORES["pagos-servicios"]();
+  } catch (e) { alert("Error: " + e.message); }
+};
+
+document.getElementById("btnActualizarPagosServ").onclick = () => CARGADORES["pagos-servicios"]();
+
+// ---------------------------------------------------------------------
+// PRODUCTOS ADMIN: subir producto con nombre de empresa (sin telefono)
+// ---------------------------------------------------------------------
+document.getElementById("btnSubirProductoAdmin").onclick = async () => {
+  const nombre = document.getElementById("prodNombre").value.trim();
+  const descripcion = document.getElementById("prodDescripcion").value.trim();
+  const precio = parseInt(document.getElementById("prodPrecio").value || "0", 10);
+  const categoria = document.getElementById("prodCategoria").value.trim();
+  const imagen = document.getElementById("prodImagen").value.trim();
+  const empresa = document.getElementById("prodEmpresa").value.trim();
+  const stock = parseInt(document.getElementById("prodStock").value || "0", 10);
+  const estado = document.getElementById("estadoProductoAdmin");
+
+  if (!nombre) { estado.textContent = "Escribe el nombre del producto."; return; }
+  if (!empresa) { estado.textContent = "Escribe el nombre de la empresa."; return; }
+  if (isNaN(precio) || precio <= 0) { estado.textContent = "Precio invalido."; return; }
+
+  try {
+    const { data, error } = await db.rpc("admin_subir_producto", {
+      p_nombre: nombre, p_descripcion: descripcion, p_precio_cents: precio,
+      p_categoria: categoria, p_imagen_url: imagen, p_empresa: empresa, p_stock: stock
+    });
+    if (error) { estado.textContent = "Error: " + error.message; return; }
+    auditar("subir_producto_admin", "productos", data, nombre);
+    estado.textContent = "Producto subido correctamente (ID: " + data + ").";
+    document.getElementById("prodNombre").value = "";
+    document.getElementById("prodDescripcion").value = "";
+    document.getElementById("prodPrecio").value = "";
+    document.getElementById("prodCategoria").value = "";
+    document.getElementById("prodImagen").value = "";
+    document.getElementById("prodEmpresa").value = "";
+    document.getElementById("prodStock").value = "";
+  } catch (e) { estado.textContent = "Error inesperado: " + e.message; }
+};
+
+// ---------------------------------------------------------------------
+// REPARTIDORES: gestionar delivery
+// ---------------------------------------------------------------------
+CARGADORES.repartidores = async () => {
+  const cont = document.getElementById("tablaRepartidores");
+  const { data, error } = await db
+    .from("repartidores")
+    .select("id, nombre, telefono, correo, activo, entregas, calificacion, creado")
+    .order("creado", { ascending: false }).limit(100);
+  if (error) { cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`; return; }
+
+  const filas = (data || []).map(r => `<tr>
+    <td>${escapeHtml(r.nombre || "-")}</td>
+    <td>${escapeHtml(r.telefono || "-")}</td>
+    <td>${escapeHtml(r.correo || "-")}</td>
+    <td><span class="chip ${r.activo ? "ok" : "pend"}">${r.activo ? "Activo" : "Inactivo"}</span></td>
+    <td>${r.entregas ?? 0}</td>
+    <td>${r.calificacion ? r.calificacion.toFixed(1) : "-"}</td>
+    <td>
+      <button class="peligro" onclick="eliminarRepartidor('${escapeHtml(r.id)}')">Eliminar</button>
+    </td>
+  </tr>`);
+  tabla(cont, ["Nombre", "Telefono", "Correo", "Estado", "Entregas", "Calificacion", ""], filas);
+};
+
+document.getElementById("btnGuardarRepartidor").onclick = async () => {
+  const nombre = document.getElementById("repNombre").value.trim();
+  const telefono = document.getElementById("repTelefono").value.trim();
+  const correo = document.getElementById("repCorreo").value.trim();
+  const activo = document.getElementById("repActivo").checked;
+
+  if (!nombre) { alert("Escribe el nombre del repartidor."); return; }
+  if (!telefono) { alert("Escribe el telefono del repartidor."); return; }
+
+  try {
+    const { data, error } = await db.rpc("admin_gestionar_repartidor", {
+      p_id: "", p_nombre: nombre, p_telefono: telefono, p_correo: correo, p_activo: activo, p_eliminar: false
+    });
+    if (error) { alert("Error: " + error.message); return; }
+    auditar("crear_repartidor", "repartidores", data, nombre);
+    document.getElementById("repNombre").value = "";
+    document.getElementById("repTelefono").value = "";
+    document.getElementById("repCorreo").value = "";
+    document.getElementById("repActivo").checked = true;
+    CARGADORES.repartidores();
+  } catch (e) { alert("Error: " + e.message); }
+};
+
+document.getElementById("btnActualizarRepartidores").onclick = () => CARGADORES.repartidores();
+
+window.eliminarRepartidor = async function (id) {
+  if (!confirm("¿Eliminar este repartidor?")) return;
+  try {
+    const { error } = await db.rpc("admin_gestionar_repartidor", {
+      p_id: id, p_eliminar: true
+    });
+    if (error) { alert("Error: " + error.message); return; }
+    auditar("eliminar_repartidor", "repartidores", id, "Eliminado");
+    CARGADORES.repartidores();
+  } catch (e) { alert("Error: " + e.message); }
+};
+
+// ---------------------------------------------------------------------
+// QR ADMIN: guardar imagen QR y generar QR para la app
+// ---------------------------------------------------------------------
+document.getElementById("btnGuardarQR").onclick = async () => {
+  const imagenUrl = document.getElementById("qrImagenUrl").value.trim();
+  const texto = document.getElementById("qrTexto").value.trim();
+  const estado = document.getElementById("estadoQR");
+
+  try {
+    const { error } = await db
+      .from("config_qr")
+      .upsert({ clave: "deposito", imagen_url: imagenUrl, texto: texto, actualizado: Date.now() }, { onConflict: "clave" });
+    if (error) { estado.textContent = "Error: " + error.message; return; }
+    auditar("guardar_qr", "config_qr", "deposito", imagenUrl);
+    estado.textContent = "QR de recarga guardado correctamente.";
+  } catch (e) { estado.textContent = "Error: " + e.message; }
+};
+
+document.getElementById("btnGenerarQRApp").onclick = async () => {
+  const resultado = document.getElementById("resultadoQR");
+  try {
+    const { data, error } = await db.rpc("generar_qr_app", { p_tipo: "deposito", p_usuario_id: null });
+    if (error) { resultado.innerHTML = `<div class="vacio">Error: ${escapeHtml(error.message)}</div>`; return; }
+    auditar("generar_qr_app", "qr", data, "QR generado para app");
+    resultado.innerHTML = `
+      <div class="card" style="margin:0">
+        <div class="codigo">${escapeHtml(data)}</div>
+        <p class="info">QR de pura letras generado. Solo la app puede leerlo.</p>
+      </div>`;
+  } catch (e) { resultado.innerHTML = `<div class="vacio">Error: ${escapeHtml(e.message)}</div>`; }
+};
+
 //  - Se guarda la sesion actual del admin, se crea la cuenta nueva con
 //    signUp y se restaura la sesion del admin (signUp la reemplaza).
 //  - La fila de usuarios con rol 'admin' la inserta el admin actual:

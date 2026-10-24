@@ -147,6 +147,11 @@
       <button data-vista="solicitudes">Solicitudes</button>
       <button data-vista="auditoria">Auditoria</button>
       <button data-vista="config">Config</button>
+      <button data-vista="retiros">Retiros</button>
+      <button data-vista="pagos-servicios">Pagos Servicios</button>
+      <button data-vista="productos-admin">Productos Admin</button>
+      <button data-vista="repartidores">Repartidores</button>
+      <button data-vista="qr-admin">QR Admin</button>
     </nav>
 
     <!-- ---------- INICIO ---------- -->
@@ -512,6 +517,149 @@
           Al aprobar se descuenta el saldo del usuario. Si no alcanza, la RPC lo rechaza.
         </p>
         <div id="tablaProdSolic"></div>
+      </div>
+    </section>
+
+    <!-- ---------- RETIROS ---------- -->
+    <section class="vista oculto" id="vista-retiros">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>1. Solicitudes de retiro pendientes</span>
+          <button class="sec" id="btnActualizarRetiros">Actualizar</button>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Al aprobar se DEBITA el saldo del usuario y se registra el movimiento.
+          Los montos estan en CENTAVOS.
+        </p>
+        <div id="tablaRetiros"></div>
+      </div>
+    </section>
+
+    <!-- ---------- PAGOS SERVICIOS ---------- -->
+    <section class="vista oculto" id="vista-pagos-servicios">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>1. Pagos de servicios pendientes</span>
+          <button class="sec" id="btnActualizarPagosServ">Actualizar</button>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Al aprobar se DEBITA el saldo del usuario. Si no alcanza, la RPC lo rechaza.
+        </p>
+        <div id="tablaPagosServicios"></div>
+      </div>
+    </section>
+
+    <!-- ---------- PRODUCTOS ADMIN ---------- -->
+    <section class="vista oculto" id="vista-productos-admin">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>1. Subir producto (admin / empresa)</span>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Sube un producto con nombre de empresa (sin numero de telefono).
+          El admin decide el precio y la categoria.
+        </p>
+        <div class="fila">
+          <div class="campo">
+            <label for="prodNombre">Nombre del producto</label>
+            <input id="prodNombre" placeholder="Ej: Paquete de datos">
+          </div>
+          <div class="campo">
+            <label for="prodEmpresa">Nombre de empresa</label>
+            <input id="prodEmpresa" placeholder="Ej: Lumiq Store">
+          </div>
+        </div>
+        <div class="fila" style="margin-top:10px">
+          <div class="campo">
+            <label for="prodDescripcion">Descripcion</label>
+            <input id="prodDescripcion" placeholder="Descripcion del producto">
+          </div>
+          <div class="campo">
+            <label for="prodCategoria">Categoria</label>
+            <input id="prodCategoria" placeholder="Ej: servicios">
+          </div>
+        </div>
+        <div class="fila" style="margin-top:10px">
+          <div class="campo">
+            <label for="prodPrecio">Precio (cents)</label>
+            <input id="prodPrecio" placeholder="10000" inputmode="numeric">
+          </div>
+          <div class="campo">
+            <label for="prodStock">Stock</label>
+            <input id="prodStock" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="campo">
+            <label for="prodImagen">URL de imagen</label>
+            <input id="prodImagen" placeholder="https://...">
+          </div>
+        </div>
+        <div class="acciones" style="margin-top:10px">
+          <button id="btnSubirProductoAdmin">Subir producto</button>
+        </div>
+        <p class="info" id="estadoProductoAdmin"></p>
+      </div>
+    </section>
+
+    <!-- ---------- REPARTIDORES ---------- -->
+    <section class="vista oculto" id="vista-repartidores">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>1. Gestionar repartidores (delivery)</span>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          El admin decide quien sera el repartidor y que numero tendra.
+        </p>
+        <div class="fila">
+          <div class="campo">
+            <label for="repNombre">Nombre del repartidor</label>
+            <input id="repNombre" placeholder="Ej: Juan Perez">
+          </div>
+          <div class="campo">
+            <label for="repTelefono">Telefono</label>
+            <input id="repTelefono" placeholder="59171234567" inputmode="numeric">
+          </div>
+          <div class="campo">
+            <label for="repCorreo">Correo</label>
+            <input id="repCorreo" placeholder="juan@correo.com">
+          </div>
+        </div>
+        <div class="acciones" style="margin-top:10px">
+          <label style="margin-bottom:14px;display:block">
+            <input type="checkbox" id="repActivo" style="width:auto;vertical-align:middle"> Activo
+          </label>
+          <button id="btnGuardarRepartidor">Guardar repartidor</button>
+          <button class="sec" id="btnActualizarRepartidores">Actualizar lista</button>
+        </div>
+        <div id="tablaRepartidores"></div>
+      </div>
+    </section>
+
+    <!-- ---------- QR ADMIN ---------- -->
+    <section class="vista oculto" id="vista-qr-admin">
+      <div class="card">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <span>1. QR para recargas de saldo</span>
+        </h2>
+        <p class="info" style="margin-bottom:12px">
+          Sube la imagen del QR que los usuarios escanean para hacer recargas.
+          El QR generado es pura letras, solo legible por la app.
+        </p>
+        <div class="fila">
+          <div class="campo">
+            <label for="qrImagenUrl">URL de la imagen QR</label>
+            <input id="qrImagenUrl" placeholder="https://tu-dominio/qr-recarga.png">
+          </div>
+          <div class="campo">
+            <label for="qrTexto">Texto descriptivo</label>
+            <input id="qrTexto" placeholder="Escanea para recargar saldo">
+          </div>
+        </div>
+        <div class="acciones" style="margin-top:10px">
+          <button id="btnGuardarQR">Guardar QR de recarga</button>
+          <button class="sec" id="btnGenerarQRApp">Generar QR para app</button>
+        </div>
+        <p class="info" id="estadoQR"></p>
+        <div id="resultadoQR" style="margin-top:16px"></div>
       </div>
     </section>
 
