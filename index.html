@@ -518,18 +518,6 @@
         </p>
         <div id="tablaProdSolic"></div>
       </div>
-
-      <div class="card">
-        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <span>3. Depositos / Recarga de saldo pendientes</span>
-          <button class="sec" id="btnActualizarDepositos">Actualizar</button>
-        </h2>
-        <p class="info" style="margin-bottom:12px">
-          Al aprobar se ACREDITA el saldo al usuario y la app muestra
-          "Deposito solicitado" automaticamente.
-        </p>
-        <div id="tablaDepositos"></div>
-      </div>
     </section>
 
     <!-- ---------- RETIROS ---------- -->
@@ -707,22 +695,6 @@
           <input type="checkbox" id="chkMantenimiento" style="width:auto;vertical-align:middle">
           Modo mantenimiento (la app lo muestra al abrir)
         </label>
-        <div class="fila">
-          <div class="campo">
-            <label for="whatsappNumero">Numero WhatsApp admin (solo digitos)</label>
-            <input id="whatsappNumero" placeholder="59173265343">
-          </div>
-        </div>
-        <div class="fila">
-          <div class="campo">
-            <label>Link directo a WhatsApp</label>
-            <div style="display:flex;gap:8px;align-items:center">
-              <span id="whatsappLink" style="color:var(--neon);font-weight:600;word-break:break-all">https://wa.me/59173265343</span>
-              <button class="sec" onclick="navigator.clipboard.writeText(document.getElementById('whatsappLink').textContent)">Copiar</button>
-            </div>
-            <p class="info" style="margin-top:6px">El boton de la app abre este enlace automaticamente.</p>
-          </div>
-        </div>
         <div class="acciones">
           <button id="btnGuardarConfig">Guardar configuracion</button>
         </div>

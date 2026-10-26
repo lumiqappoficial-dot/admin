@@ -1000,7 +1000,7 @@ document.getElementById("btnActualizarTx").onclick = () => cargarTransferencias(
 // ---------------------------------------------------------------------
 
 CARGADORES.solicitudes = async () => {
-  await Promise.all([cargarRecargas(), cargarSolicitudesProducto(), cargarDepositos()]);
+  await Promise.all([cargarRecargas(), cargarSolicitudesProducto()]);
 };
 
 /** Etiqueta visual del estado de una solicitud. */
@@ -1066,44 +1066,6 @@ async function cargarSolicitudesProducto() {
     "Referencia", "Monto", "Estado", "Motivo", ""], filas);
 }
 
-/** Carga las solicitudes de deposito / recarga de saldo (solicitudes_billetera). */
-async function cargarDepositos() {
-  const cont = document.getElementById("tablaDepositos");
-  const { data, error } = await db
-    .from("solicitudes_billetera")
-    .select("id, usuario_id, monto, moneda, metodo, estado, motivo, creado, actualizado")
-    .order("creado", { ascending: false }).limit(100);
-  if (error) { cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`; return; }
-
-  const filas = (data || []).map(s => `<tr>
-    <td>${fecha(s.creado)}</td>
-    <td>${escapeHtml(s.usuario_id || "-")}</td>
-    <td style="color:var(--neon);font-weight:700">${bs(s.monto)} ${escapeHtml(s.moneda || "BOB")}</td>
-    <td>${escapeHtml(s.metodo || "-")}</td>
-    <td>${chipEstado(s.estado)}</td>
-    <td>${escapeHtml(s.motivo || "-")}</td>
-    <td class="acciones">${s.estado === "pendiente"
-      ? `<button class="sec" onclick="resolverDeposito('${escapeHtml(s.id)}',true)">Aprobar</button>
-         <button class="peligro" onclick="resolverDeposito('${escapeHtml(s.id)}',false)">Rechazar</button>`
-      : "-"}</td>
-  </tr>`);
-  tabla(cont, ["Cuando", "Usuario", "Monto", "Metodo", "Estado", "Motivo", ""], filas);
-}
-
-/** Aprueba o rechaza una solicitud de deposito usando resolver_solicitud_billetera. */
-window.resolverDeposito = async function (id, aprobar) {
-  let motivo = "";
-  if (!aprobar) {
-    const respuesta = prompt("Motivo del rechazo:", "Falta comprobante");
-    if (respuesta === null) return;
-    motivo = respuesta;
-  }
-  const { error } = await db.rpc("resolver_solicitud_billetera", { p_id: id, p_aprobar: aprobar, p_motivo: motivo });
-  if (error) { alert("No se pudo resolver: " + error.message); return; }
-  await cargarDepositos();
-  await cargarSaldos();
-};
-
 /** Aprueba o rechaza una solicitud usando la RPC correspondiente. */
 window.resolverSolicitud = async function (tipo, id, aprobar) {
   let motivo = "";
@@ -1125,7 +1087,6 @@ window.resolverSolicitud = async function (tipo, id, aprobar) {
 
 document.getElementById("btnActualizarRecargas").onclick = () => cargarRecargas();
 document.getElementById("btnActualizarProdSolic").onclick = () => cargarSolicitudesProducto();
-document.getElementById("btnActualizarDepositos").onclick = () => cargarDepositos();
 
 // ---------------------------------------------------------------------
 // SUBDAS DE PAQUETES PARA RECARGAS
@@ -1260,9 +1221,6 @@ CARGADORES.config = async () => {
   document.getElementById("chkMantenimiento").checked = !!v.mantenimiento;
   document.getElementById("avisoTexto").value = v.aviso || "";
   document.getElementById("versionApp").value = v.version_app || "";
-  document.getElementById("whatsappNumero").value = v.whatsapp_numero || "59173265343";
-  document.getElementById("whatsappLink").textContent = "https://wa.me/" + (v.whatsapp_numero || "59173265343");
-};
 
   const cont = document.getElementById("tablaRoles");
   const { data: roles, error } = await db.from("roles").select("*").order("nombre");
@@ -1280,18 +1238,15 @@ CARGADORES.config = async () => {
 };
 
 document.getElementById("btnGuardarConfig").onclick = async () => {
-  const whatsappNumero = document.getElementById("whatsappNumero").value.trim().replace(/\D/g, "");
   const valor = {
     mantenimiento: document.getElementById("chkMantenimiento").checked,
     aviso: document.getElementById("avisoTexto").value.trim(),
-    version_app: document.getElementById("versionApp").value.trim() || "1.0.1",
-    whatsapp_numero: whatsappNumero || "59173265343"
+    version_app: document.getElementById("versionApp").value.trim() || "1.0.1"
   };
   const estado = document.getElementById("estadoConfig");
   const { error } = await db.from("config")
     .upsert({ clave: "general", valor, actualizado: Date.now() }, { onConflict: "clave" });
   if (error) { estado.textContent = error.message; return; }
-  document.getElementById("whatsappLink").textContent = "https://wa.me/" + valor.whatsapp_numero;
   auditar("guardar_config", "config", "general", JSON.stringify(valor));
   estado.textContent = "Configuracion guardada (" + fecha(Date.now()) + ").";
 };
