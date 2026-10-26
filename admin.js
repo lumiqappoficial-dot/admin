@@ -6,8 +6,8 @@
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const SUPABASE_URL = "https://zclgybzeuftutfrqtwax.supabase.co";
-const SUPABASE_KEY = "sb_publishable_D-PnZxY4a5X37WoDO-_Lhw_HiH1L60z";
+const SUPABASE_URL = "https://evfkwqndoxsdfuitihap.supabase.co";
+const SUPABASE_KEY = "sb_publishable_SRaPc_7XZ4z8qksHQczylg_XUzoV6UW";
 
 // Correo del unico administrador. Cualquier otra cuenta que entre con
 // Google se cierra de inmediato.
