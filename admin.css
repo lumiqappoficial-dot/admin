@@ -459,6 +459,63 @@ main {
   margin: 0 0 17px;
 }
 
+.user-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 15px;
+}
+
+.user-search {
+  min-width: min(100%, 340px);
+  flex: 1;
+}
+
+.user-search-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.user-search-controls input {
+  min-width: 0;
+  flex: 1;
+}
+
+.user-search-controls button {
+  flex: 0 0 auto;
+}
+
+.user-page-size {
+  width: 150px;
+  flex: 0 0 150px;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-top: 1px solid rgba(104, 130, 255, .17);
+  padding-top: 13px;
+  color: #8298c9;
+  font-size: .75rem;
+}
+
+.pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #bac9ee;
+}
+
+.pagination-actions button {
+  min-height: 32px;
+  padding: 6px 11px;
+  font-size: .73rem;
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
@@ -750,6 +807,16 @@ td.acciones button {
     align-items: flex-start;
   }
 
+  .user-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .user-page-size {
+    width: 100%;
+    flex-basis: auto;
+  }
+
   .page-heading h2 {
     font-size: 1.35rem;
   }
@@ -777,6 +844,11 @@ td.acciones button {
   }
 
   .page-heading {
+    flex-direction: column;
+  }
+
+  .pagination-bar {
+    align-items: flex-start;
     flex-direction: column;
   }
 
