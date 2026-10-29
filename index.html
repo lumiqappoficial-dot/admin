@@ -142,7 +142,7 @@
         <div>
           <p class="eyebrow">GESTIÓN DE CUENTAS</p>
           <h2>Usuarios</h2>
-          <p class="info">Administra perfiles, permisos, estado y distintivo desde una sola vista. Se cargan hasta 200 registros por consulta.</p>
+          <p class="info">Busca por nombre, número, correo o empresa. Los resultados se consultan en páginas directamente desde Supabase.</p>
         </div>
         <button class="sec" id="btnActualizarUsu">Actualizar</button>
       </div>
@@ -151,13 +151,38 @@
         <button type="button" data-user-tab="banned">Baneados</button>
       </nav>
       <div class="stats user-stats">
-        <div class="stat"><div class="n" id="userTotal">-</div><div class="t">En lista</div></div>
-        <div class="stat"><div class="n" id="userActive">-</div><div class="t">Activos</div></div>
-        <div class="stat"><div class="n" id="userBanned">-</div><div class="t">Baneados</div></div>
-        <div class="stat"><div class="n" id="userVerified">-</div><div class="t">Verificados</div></div>
+        <div class="stat"><div class="n" id="userTotal">-</div><div class="t">Coincidencias</div></div>
+        <div class="stat"><div class="n" id="userActive">-</div><div class="t">Activos en página</div></div>
+        <div class="stat"><div class="n" id="userBanned">-</div><div class="t">Baneados en página</div></div>
+        <div class="stat"><div class="n" id="userVerified">-</div><div class="t">Verificados en página</div></div>
       </div>
       <div class="card user-table-card">
+        <div class="user-toolbar">
+          <div class="user-search">
+            <label for="buscarUsuarios">Buscar usuarios</label>
+            <div class="user-search-controls">
+              <input id="buscarUsuarios" type="search" placeholder="Nombre, número, correo o empresa">
+              <button class="sec" id="btnBuscarUsuarios" type="button">Buscar</button>
+            </div>
+          </div>
+          <div class="user-page-size">
+            <label for="usuariosPorPagina">Filas por página</label>
+            <select id="usuariosPorPagina">
+              <option value="10" selected>10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+        </div>
         <div id="tablaUsuarios"></div>
+        <div class="pagination-bar">
+          <span id="usuariosInfoPagina">Mostrando 0-0 de 0 usuarios</span>
+          <div class="pagination-actions">
+            <button class="sec" id="btnUsuariosAnterior" type="button" disabled>Anterior</button>
+            <span id="usuariosPaginaActual" aria-live="polite">Página 1 de 1</span>
+            <button class="sec" id="btnUsuariosSiguiente" type="button" disabled>Siguiente</button>
+          </div>
+        </div>
       </div>
     </section>
 
