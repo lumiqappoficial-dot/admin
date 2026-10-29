@@ -35,6 +35,14 @@ function soloDigitos(v) {
   return (v || "").replace(/\D/g, "");
 }
 
+/** Escapa caracteres especiales de un patrón ilike enviado por PostgREST. */
+function escaparPatronIlike(valor) {
+  return String(valor ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/[%_]/g, "\\$&")
+    .replace(/"/g, '\\"');
+}
+
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -356,22 +364,64 @@ document.getElementById("btnActualizar").onclick = () => CARGADORES.codigos();
 // USUARIOS: listado + acciones (rol, verificado, activo)
 // ---------------------------------------------------------------------
 
-CARGADORES.usuarios = async () => {
-  await Promise.all([cargarUsuarios(), cargarVerificados()]);
-};
+let pestanaUsuarios = "admin";
+let paginaUsuarios = 0;
+let filtroUsuarios = "";
+let solicitudesUsuarios = 0;
+
+CARGADORES.usuarios = async () => cargarUsuarios();
 
 async function cargarUsuarios() {
+  const solicitudActual = ++solicitudesUsuarios;
   const cont = document.getElementById("tablaUsuarios");
-  const { data, error } = await db
-    .from("usuarios").select("*").order("creado", { ascending: false }).limit(200);
-  if (error) { cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`; return; }
+  const porPagina = Number(document.getElementById("usuariosPorPagina").value) || 10;
+  const inicio = paginaUsuarios * porPagina;
+  let consulta = db.from("usuarios")
+    .select("*", { count: "exact" })
+    .order("creado", { ascending: false });
 
-  const filas = (data || []).map(u => `<tr>
+  if (pestanaUsuarios === "banned") consulta = consulta.eq("activo", false);
+  if (filtroUsuarios) {
+    const texto = escaparPatronIlike(filtroUsuarios);
+    const patronTexto = `"%${texto}%"`;
+    const condiciones = [
+      `nombre.ilike.${patronTexto}`,
+      `correo.ilike.${patronTexto}`,
+      `empresa.ilike.${patronTexto}`
+    ];
+    const numero = soloDigitos(filtroUsuarios);
+    if (numero) condiciones.push(`numero.ilike."%${numero}%"`);
+    consulta = consulta.or(condiciones.join(","));
+  }
+
+  const { data, error, count } = await consulta.range(inicio, inicio + porPagina - 1);
+  if (solicitudActual !== solicitudesUsuarios) return;
+  if (error) {
+    cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`;
+    document.getElementById("usuariosInfoPagina").textContent = "No se pudieron cargar los usuarios.";
+    document.getElementById("btnUsuariosAnterior").disabled = true;
+    document.getElementById("btnUsuariosSiguiente").disabled = true;
+    return;
+  }
+
+  const total = count ?? (data || []).length;
+  const paginas = Math.max(1, Math.ceil(total / porPagina));
+  if (paginaUsuarios >= paginas) {
+    paginaUsuarios = paginas - 1;
+    return cargarUsuarios();
+  }
+  const usuarios = data || [];
+  document.getElementById("userTotal").textContent = total;
+  document.getElementById("userActive").textContent = usuarios.filter(u => u.activo).length;
+  document.getElementById("userBanned").textContent = usuarios.filter(u => u.activo === false).length;
+  document.getElementById("userVerified").textContent = usuarios.filter(u => u.verificado).length;
+
+  const filas = usuarios.map(u => `<tr>
     <td>${escapeHtml(u.nombre || "-")}</td>
     <td>+${escapeHtml(u.numero || "-")}</td>
     <td>${escapeHtml(u.correo || "-")}</td>
     <td>${escapeHtml(u.empresa || "-")}</td>
-    <td><span class="chip ${u.verificado ? "ok" : "no"}">${u.verificado ? "verificado" : "sin verificar"}</span></td>
+    <td><span class="chip ${u.verificado ? "ok" : "no"}">${u.verificado ? "Verificado" : "Sin verificar"}</span></td>
     <td>
       <select onchange="cambiarRol('${u.id}', this.value)" style="min-width:130px">
         <option value="usuario" ${u.rol === "usuario" ? "selected" : ""}>usuario</option>
@@ -382,19 +432,79 @@ async function cargarUsuarios() {
     <td><span class="chip ${u.activo ? "ok" : "no"}">${u.activo ? "activo" : "baja"}</span></td>
     <td class="acciones">
       <button class="sec" onclick="alternarVerificado('${u.id}', ${!u.verificado})">
-        ${u.verificado ? "Quitar sello" : "Dar sello"}
+        ${u.verificado ? "Quitar verificación" : "Verificar usuario"}
       </button>
       <button class="${u.activo ? "peligro" : "sec"}"
               onclick="alternarActivo('${u.id}', ${!u.activo})">
         ${u.activo ? "Desactivar" : "Reactivar"}
       </button>
-      <button class="peligro" onclick="eliminarUsuario('${u.id}', '${escapeHtml(u.nombre || "-")}')">
+      <button class="peligro" data-user-delete="${escapeHtml(u.id)}"
+              data-user-name="${escapeHtml(u.nombre || "-")}"
+              data-user-number="${escapeHtml(u.numero || "")}">
         Eliminar
       </button>
     </td>
   </tr>`);
-  tabla(cont, ["Nombre", "Numero", "Correo", "Empresa", "Sello", "Rol", "Estado", ""], filas);
+  if (!filas.length && filtroUsuarios) {
+    cont.innerHTML = `<div class="vacio">No hay usuarios que coincidan con "${escapeHtml(filtroUsuarios)}".</div>`;
+  } else {
+    tabla(cont, ["Nombre", "Numero", "Correo", "Empresa", "Sello", "Rol", "Estado", ""], filas);
+  }
+
+  const desde = total ? inicio + 1 : 0;
+  const hasta = total ? Math.min(inicio + usuarios.length, total) : 0;
+  document.getElementById("usuariosInfoPagina").textContent =
+    `Mostrando ${desde}-${hasta} de ${total} usuarios`;
+  document.getElementById("usuariosPaginaActual").textContent =
+    `Página ${paginaUsuarios + 1} de ${paginas}`;
+  document.getElementById("btnUsuariosAnterior").disabled = paginaUsuarios === 0;
+  document.getElementById("btnUsuariosSiguiente").disabled = paginaUsuarios >= paginas - 1;
 }
+
+document.getElementById("menuUsuarios").onclick = e => {
+  const boton = e.target.closest("button[data-user-tab]");
+  if (!boton) return;
+  pestanaUsuarios = boton.dataset.userTab;
+  paginaUsuarios = 0;
+  document.querySelectorAll("#menuUsuarios button").forEach(b =>
+    b.classList.toggle("on", b.dataset.userTab === pestanaUsuarios));
+  CARGADORES.usuarios();
+};
+
+function aplicarBusquedaUsuarios() {
+  filtroUsuarios = document.getElementById("buscarUsuarios").value.trim();
+  paginaUsuarios = 0;
+  CARGADORES.usuarios();
+}
+
+document.getElementById("btnBuscarUsuarios").onclick = aplicarBusquedaUsuarios;
+document.getElementById("buscarUsuarios").onkeydown = e => {
+  if (e.key === "Enter") aplicarBusquedaUsuarios();
+};
+document.getElementById("usuariosPorPagina").onchange = () => {
+  paginaUsuarios = 0;
+  CARGADORES.usuarios();
+};
+document.getElementById("btnUsuariosAnterior").onclick = () => {
+  if (paginaUsuarios > 0) {
+    paginaUsuarios -= 1;
+    CARGADORES.usuarios();
+  }
+};
+document.getElementById("btnUsuariosSiguiente").onclick = () => {
+  paginaUsuarios += 1;
+  CARGADORES.usuarios();
+};
+
+document.getElementById("tablaUsuarios").onclick = e => {
+  const boton = e.target.closest("button[data-user-delete]");
+  if (!boton) return;
+  window.eliminarUsuario(
+    boton.dataset.userDelete,
+    boton.dataset.userName,
+    boton.dataset.userNumber
+  );
+};
 
 window.cambiarRol = async function (id, rol) {
   const { error } = await db.from("usuarios").update({ rol }).eq("id", id);
@@ -405,6 +515,7 @@ window.cambiarRol = async function (id, rol) {
 window.alternarVerificado = async function (id, valor) {
   const { error } = await db.from("usuarios").update({ verificado: valor }).eq("id", id);
   if (error) return alert(error.message);
+  auditar(valor ? "verificar_usuario" : "quitar_verificacion_usuario", "usuarios", id);
   cargarUsuarios();
 };
 
@@ -415,63 +526,40 @@ window.alternarActivo = async function (id, valor) {
   cargarUsuarios();
 };
 
-window.eliminarUsuario = async function (id, nombre) {
-  if (!confirm("¿Eliminar completamente a " + nombre + "?\nSe borrarán sus pedidos, saldo, movimientos, transferencias y todos sus datos. Esta acción no se puede deshacer.")) return;
+window.eliminarUsuario = async function (id, nombre, numero) {
+  const numeroVinculado = soloDigitos(numero);
+  const detalleNumero = numeroVinculado
+    ? ` También se borrará el número +${numeroVinculado}.`
+    : "";
+  if (!confirm("¿Eliminar completamente a " + nombre + "?\nSe borrarán sus datos, pedidos, saldo, movimientos y transferencias." + detalleNumero + "\nEsta acción no se puede deshacer.")) return;
   const { data, error } = await db.rpc("eliminar_usuario_completo", { p_id: id });
   if (error) { alert("Error: " + error.message); return; }
   if (!data || !data.ok) { alert(data ? data.error : "Error desconocido"); return; }
+
+  if (numeroVinculado) {
+    const { error: errorNumero } = await db.from("numeros")
+      .delete().eq("numero", numeroVinculado);
+    if (errorNumero) {
+      alert("El perfil se eliminó, pero Supabase no permitió borrar el número asociado: "
+        + errorNumero.message + ". Revisa las políticas de acceso de la tabla de números.");
+      await cargarUsuarios();
+      return;
+    }
+    const { data: numeroRestante, error: errorComprobacion } = await db.from("numeros")
+      .select("numero").eq("numero", numeroVinculado).maybeSingle();
+    if (errorComprobacion || numeroRestante) {
+      alert("El perfil se eliminó, pero no pude confirmar que el número asociado haya desaparecido. "
+        + "Revisa las políticas de acceso de la tabla de números.");
+      await cargarUsuarios();
+      return;
+    }
+  }
+
   alert(data.mensaje || "Usuario eliminado.");
-  cargarUsuarios();
+  await cargarUsuarios();
 };
 
 document.getElementById("btnActualizarUsu").onclick = () => cargarUsuarios();
-
-// ---------------------------------------------------------------------
-// VERIFICACION DE NUMEROS (distintivo en la tabla numeros)
-// ---------------------------------------------------------------------
-
-async function cargarVerificados() {
-  const cont = document.getElementById("tablaVerificados");
-  const { data, error } = await db
-    .from("numeros").select("*").eq("verificado", true).order("actualizado", { ascending: false });
-  if (error) { cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`; return; }
-
-  const filas = (data || []).map(n => `<tr>
-    <td>+${escapeHtml(n.numero)}</td>
-    <td>${escapeHtml(n.nombre || "-")}</td>
-    <td>${escapeHtml(n.nota || "-")}</td>
-    <td>${fecha(n.actualizado)}</td>
-    <td class="acciones">
-      <button class="peligro" onclick="quitarVerificacion('${escapeHtml(n.numero)}')">Quitar</button>
-    </td>
-  </tr>`);
-  tabla(cont, ["Numero", "Nombre", "Nota interna", "Actualizado", ""], filas);
-}
-
-document.getElementById("btnVerificar").onclick = async () => {
-  const numero = soloDigitos(document.getElementById("numVerif").value);
-  const nota = document.getElementById("notaVerif").value.trim();
-  if (numero.length < 8) return alert("Escribe un numero valido.");
-  const { error } = await db.from("numeros").upsert({
-    numero, verificado: true, nota, actualizado: Date.now()
-  }, { onConflict: "numero" });
-  if (error) return alert(error.message);
-  auditar("verificar_numero", "numeros", numero);
-  cargarVerificados();
-};
-
-window.quitarVerificacion = async function (numero) {
-  const { error } = await db.from("numeros")
-    .update({ verificado: false, actualizado: Date.now() }).eq("numero", numero);
-  if (error) return alert(error.message);
-  cargarVerificados();
-};
-
-document.getElementById("btnQuitarVerif").onclick = async () => {
-  const numero = soloDigitos(document.getElementById("numVerif").value);
-  if (numero.length < 8) return alert("Escribe un numero valido.");
-  await window.quitarVerificacion(numero);
-};
 
 // ---------------------------------------------------------------------
 // DISPOSITIVOS Y PERFILES
@@ -1479,6 +1567,23 @@ window.eliminarRepartidor = async function (id) {
 // ---------------------------------------------------------------------
 // QR ADMIN: guardar imagen QR y generar QR para la app
 // ---------------------------------------------------------------------
+CARGADORES["qr-admin"] = async () => {
+  const estado = document.getElementById("estadoQR");
+  const { data, error } = await db.from("config_qr")
+    .select("imagen_url, texto").eq("clave", "deposito").maybeSingle();
+  if (error) {
+    estado.textContent = "No se pudo cargar la configuración del QR: " + error.message;
+    return;
+  }
+  if (!data) {
+    estado.textContent = "Todavía no hay una configuración QR guardada.";
+    return;
+  }
+  document.getElementById("qrImagenUrl").value = data.imagen_url || "";
+  document.getElementById("qrTexto").value = data.texto || "";
+  estado.textContent = "Configuración QR cargada.";
+};
+
 document.getElementById("btnGuardarQR").onclick = async () => {
   const imagenUrl = document.getElementById("qrImagenUrl").value.trim();
   const texto = document.getElementById("qrTexto").value.trim();

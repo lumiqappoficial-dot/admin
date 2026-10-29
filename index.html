@@ -4,99 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lumiq · Panel de administracion</title>
-<style>
-  :root{
-    --neon:#39FF6A; --neon-2:#00E676;
-    --fondo:#060A07; --panel:#0C130E; --panel-2:#111A13;
-    --texto:#DFFFE8; --gris:#7FBF93; --borde:rgba(57,255,106,.18);
-    --peligro:#FF4D4D; --aviso:#FFC94D;
-    --glow:0 0 14px rgba(57,255,106,.35);
-    --base:18px;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:
-      radial-gradient(1000px 500px at 80% -10%, rgba(57,255,106,.10), transparent 60%),
-      radial-gradient(800px 400px at -10% 110%, rgba(0,230,118,.08), transparent 60%),
-      var(--fondo);
-    color:var(--texto); font-size:var(--base); min-height:100vh;
-  }
-  header{
-    background:linear-gradient(90deg,#0A140D,#0E1D12 60%,#0A140D);
-    border-bottom:1px solid var(--borde);
-    padding:14px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-    position:sticky; top:0; z-index:5; box-shadow:var(--glow);
-  }
-  header h1{font-size:1.25rem;flex:1;letter-spacing:.04em}
-  header h1 b{color:var(--neon);text-shadow:0 0 10px rgba(57,255,106,.6)}
-  .badge{
-    background:rgba(57,255,106,.12); color:var(--neon);
-    border:1px solid var(--borde); padding:5px 12px;
-    border-radius:999px; font-size:.8rem; font-weight:600;
-  }
-  main{max-width:1180px;margin:0 auto;padding:20px}
-  .card{
-    background:linear-gradient(180deg,var(--panel-2),var(--panel));
-    border:1px solid var(--borde); border-radius:14px; padding:18px;
-    margin-bottom:18px;
-  }
-  .card h2{font-size:1.05rem;margin-bottom:14px;color:var(--neon)}
-  label{display:block;font-weight:600;margin-bottom:6px;color:var(--gris);font-size:.9rem}
-  input,select{
-    width:100%; padding:12px; border:1px solid var(--borde);
-    border-radius:8px; font-size:1rem; font-family:inherit;
-    background:#0A110C; color:var(--texto);
-  }
-  input:focus,select:focus{outline:2px solid var(--neon);box-shadow:var(--glow)}
-  .fila{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
-  .fila>*{flex:1;min-width:170px}
-  .fila .campo{margin-bottom:10px}
-  button{
-    background:linear-gradient(180deg,var(--neon),var(--neon-2)); color:#04140A;
-    border:0; padding:13px 20px; border-radius:8px; font-size:1rem; font-weight:700;
-    font-family:inherit; cursor:pointer; transition:.15s;
-  }
-  button:hover{box-shadow:var(--glow);filter:brightness(1.05)}
-  button.sec{background:transparent;color:var(--neon);border:1px solid var(--neon)}
-  button.peligro{background:var(--peligro);color:#fff}
-  button:disabled{opacity:.5;cursor:not-allowed}
-  button.google{
-    display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
-    background:#fff;color:#3C4043;border:1px solid #DADCE0;padding:14px 20px;font-weight:600;
-  }
-  button.google:hover{background:#F7F8F8;box-shadow:none}
-  table{width:100%;border-collapse:collapse}
-  th,td{padding:11px 8px;text-align:left;border-bottom:1px solid var(--borde);vertical-align:middle}
-  th{font-size:.8rem;color:var(--gris);text-transform:uppercase;letter-spacing:.05em}
-  tbody tr:hover{background:rgba(57,255,106,.05)}
-  .codigo{
-    font-family:ui-monospace,Consolas,monospace;font-size:1.6rem;font-weight:700;
-    letter-spacing:.28em;color:var(--neon);text-shadow:0 0 12px rgba(57,255,106,.7);
-  }
-  .chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.78rem;font-weight:700}
-  .chip.ok{background:rgba(57,255,106,.15);color:var(--neon);border:1px solid var(--borde)}
-  .chip.no{background:rgba(255,77,77,.15);color:#FF8080}
-  .chip.pend{background:rgba(255,201,77,.15);color:var(--aviso)}
-  .oculto{display:none !important}
-  #login{max-width:440px;margin:70px auto;text-align:center}
-  #login .logo{font-size:2.2rem;font-weight:800;letter-spacing:.2em;color:var(--neon);text-shadow:0 0 18px rgba(57,255,106,.8);margin-bottom:6px}
-  #login .sub{color:var(--gris);margin-bottom:22px;font-size:.92rem}
-  .aviso{background:rgba(255,201,77,.12);border:1px solid rgba(255,201,77,.4);color:var(--aviso);padding:12px 14px;border-radius:8px;margin-bottom:16px;font-size:.88rem;text-align:left}
-  #msgLogin{min-height:24px;font-size:.9rem;font-weight:600}
-  .info{font-size:.85rem;color:var(--gris);margin-top:8px}
-  .acciones{display:flex;gap:8px;flex-wrap:wrap}
-  .vacio{text-align:center;color:var(--gris);padding:26px}
-  .barra-filtros{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
-  .barra-filtros button.sec.on{background:var(--neon);color:#04140A}
-  nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-  nav button{background:var(--panel);color:var(--gris);border:1px solid var(--borde);padding:10px 16px;font-size:.9rem;font-weight:600;border-radius:999px}
-  nav button.on{background:linear-gradient(180deg,var(--neon),var(--neon-2));color:#04140A;box-shadow:var(--glow)}
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
-  .stat{background:var(--panel-2);border:1px solid var(--borde);border-radius:12px;padding:16px;text-align:center}
-  .stat .n{font-size:1.9rem;font-weight:800;color:var(--neon);text-shadow:0 0 12px rgba(57,255,106,.5)}
-  .stat .t{font-size:.82rem;color:var(--gris);margin-top:4px;text-transform:uppercase;letter-spacing:.05em}
-</style>
+<link rel="stylesheet" href="./admin.css">
 </head>
 <body>
 <!-- ================= LOGIN ================= -->
@@ -134,25 +42,40 @@
     <button class="peligro" id="btnSalir">Salir</button>
   </header>
 
-  <main>
-    <nav id="menu">
-      <button data-vista="inicio" class="on">Inicio</button>
-      <button data-vista="codigos">Codigos 6 digitos</button>
-      <button data-vista="usuarios">Usuarios</button>
-      <button data-vista="dispositivos">Dispositivos</button>
-      <button data-vista="chats">Chats</button>
-      <button data-vista="reportes">Reportes</button>
-      <button data-vista="tienda">Tienda</button>
-      <button data-vista="moneda">Moneda</button>
-      <button data-vista="solicitudes">Solicitudes</button>
-      <button data-vista="auditoria">Auditoria</button>
-      <button data-vista="config">Config</button>
-      <button data-vista="retiros">Retiros</button>
-      <button data-vista="pagos-servicios">Pagos Servicios</button>
-      <button data-vista="productos-admin">Productos Admin</button>
-      <button data-vista="repartidores">Repartidores</button>
-      <button data-vista="qr-admin">QR Admin</button>
-    </nav>
+  <div class="panel-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-mark" aria-hidden="true">ϟ</span>
+        <span><strong>LUMIQ</strong><small>Panel de administración</small></span>
+      </div>
+      <div class="nav-group-label">GENERAL</div>
+      <nav id="menu" aria-label="Navegación principal">
+        <button data-vista="inicio" class="on"><span class="nav-icon">⌂</span><span>Inicio</span></button>
+        <button data-vista="codigos"><span class="nav-icon">⌘</span><span>Códigos 6 dígitos</span></button>
+        <button data-vista="usuarios"><span class="nav-icon">♙</span><span>Usuarios</span></button>
+        <button data-vista="dispositivos"><span class="nav-icon">▣</span><span>Dispositivos</span></button>
+        <button data-vista="chats"><span class="nav-icon">▤</span><span>Chats</span></button>
+        <button data-vista="reportes"><span class="nav-icon">▥</span><span>Reportes</span></button>
+        <button data-vista="tienda"><span class="nav-icon">▣</span><span>Tienda</span></button>
+        <button data-vista="moneda"><span class="nav-icon">$</span><span>Moneda</span></button>
+        <button data-vista="solicitudes"><span class="nav-icon">↗</span><span>Solicitudes</span></button>
+        <button data-vista="auditoria"><span class="nav-icon">◈</span><span>Auditoría</span></button>
+        <button data-vista="config"><span class="nav-icon">⚙</span><span>Configuración</span></button>
+        <div class="nav-divider" aria-hidden="true"></div>
+        <div class="nav-group-label">OPERACIONES</div>
+        <button data-vista="retiros"><span class="nav-icon">⇧</span><span>Retiros</span></button>
+        <button data-vista="pagos-servicios"><span class="nav-icon">ϟ</span><span>Pagos de servicios</span></button>
+        <button data-vista="productos-admin"><span class="nav-icon">⬡</span><span>Productos admin</span></button>
+        <button data-vista="repartidores"><span class="nav-icon">➤</span><span>Repartidores</span></button>
+        <button data-vista="qr-admin"><span class="nav-icon">▦</span><span>QR Admin</span></button>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="status-dot"></span>
+        <span>Sistema protegido</span>
+      </div>
+    </aside>
+
+    <main>
 
     <!-- ---------- INICIO ---------- -->
     <section class="vista" id="vista-inicio">
@@ -215,35 +138,51 @@
 
     <!-- ---------- USUARIOS ---------- -->
     <section class="vista oculto" id="vista-usuarios">
-      <div class="card">
-        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <span>1. Usuarios registrados</span>
-          <button class="sec" id="btnActualizarUsu">Actualizar</button>
-        </h2>
-        <p class="info" style="margin-bottom:12px">
-          Cambia rol, activa/desactiva o pon el distintivo de verificado.
-          Solo el administrador lee esta tabla entera (RLS).
-        </p>
-        <div id="tablaUsuarios"></div>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">GESTIÓN DE CUENTAS</p>
+          <h2>Usuarios</h2>
+          <p class="info">Busca por nombre, número, correo o empresa. Los resultados se consultan en páginas directamente desde Supabase.</p>
+        </div>
+        <button class="sec" id="btnActualizarUsu">Actualizar</button>
       </div>
-
-      <div class="card">
-        <h2>2. Verificacion de numeros (distintivo)</h2>
-        <div class="fila">
-          <div class="campo">
-            <label for="numVerif">Numero a verificar</label>
-            <input id="numVerif" placeholder="51987654321" inputmode="numeric">
+      <nav id="menuUsuarios" class="subnav" aria-label="Secciones de usuarios">
+        <button type="button" data-user-tab="admin" class="on">Administrar usuarios</button>
+        <button type="button" data-user-tab="banned">Baneados</button>
+      </nav>
+      <div class="stats user-stats">
+        <div class="stat"><div class="n" id="userTotal">-</div><div class="t">Coincidencias</div></div>
+        <div class="stat"><div class="n" id="userActive">-</div><div class="t">Activos en página</div></div>
+        <div class="stat"><div class="n" id="userBanned">-</div><div class="t">Baneados en página</div></div>
+        <div class="stat"><div class="n" id="userVerified">-</div><div class="t">Verificados en página</div></div>
+      </div>
+      <div class="card user-table-card">
+        <div class="user-toolbar">
+          <div class="user-search">
+            <label for="buscarUsuarios">Buscar usuarios</label>
+            <div class="user-search-controls">
+              <input id="buscarUsuarios" type="search" placeholder="Nombre, número, correo o empresa">
+              <button class="sec" id="btnBuscarUsuarios" type="button">Buscar</button>
+            </div>
           </div>
-          <div class="campo">
-            <label for="notaVerif">Nota interna</label>
-            <input id="notaVerif" placeholder="Ej: cliente de la tienda">
+          <div class="user-page-size">
+            <label for="usuariosPorPagina">Filas por página</label>
+            <select id="usuariosPorPagina">
+              <option value="10" selected>10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
           </div>
         </div>
-        <div class="acciones" style="margin-bottom:16px">
-          <button id="btnVerificar">Marcar verificado</button>
-          <button class="sec" id="btnQuitarVerif">Quitar verificacion</button>
+        <div id="tablaUsuarios"></div>
+        <div class="pagination-bar">
+          <span id="usuariosInfoPagina">Mostrando 0-0 de 0 usuarios</span>
+          <div class="pagination-actions">
+            <button class="sec" id="btnUsuariosAnterior" type="button" disabled>Anterior</button>
+            <span id="usuariosPaginaActual" aria-live="polite">Página 1 de 1</span>
+            <button class="sec" id="btnUsuariosSiguiente" type="button" disabled>Siguiente</button>
+          </div>
         </div>
-        <div id="tablaVerificados"></div>
       </div>
     </section>
 
@@ -761,7 +700,8 @@
       </div>
     </section>
 
-  </main>
+    </main>
+  </div>
 </section>
 
 <script type="module" src="admin.js"></script>
