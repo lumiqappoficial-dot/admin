@@ -35,6 +35,14 @@ function soloDigitos(v) {
   return (v || "").replace(/\D/g, "");
 }
 
+/** Escapa caracteres especiales de un patrón ilike enviado por PostgREST. */
+function escaparPatronIlike(valor) {
+  return String(valor ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/[%_]/g, "\\$&")
+    .replace(/"/g, '\\"');
+}
+
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -357,25 +365,58 @@ document.getElementById("btnActualizar").onclick = () => CARGADORES.codigos();
 // ---------------------------------------------------------------------
 
 let pestanaUsuarios = "admin";
+let paginaUsuarios = 0;
+let filtroUsuarios = "";
+let solicitudesUsuarios = 0;
 
 CARGADORES.usuarios = async () => cargarUsuarios();
 
 async function cargarUsuarios() {
+  const solicitudActual = ++solicitudesUsuarios;
   const cont = document.getElementById("tablaUsuarios");
-  const { data, error } = await db
-    .from("usuarios").select("*").order("creado", { ascending: false }).limit(200);
-  if (error) { cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`; return; }
+  const porPagina = Number(document.getElementById("usuariosPorPagina").value) || 10;
+  const inicio = paginaUsuarios * porPagina;
+  let consulta = db.from("usuarios")
+    .select("*", { count: "exact" })
+    .order("creado", { ascending: false });
 
+  if (pestanaUsuarios === "banned") consulta = consulta.eq("activo", false);
+  if (filtroUsuarios) {
+    const texto = escaparPatronIlike(filtroUsuarios);
+    const patronTexto = `"%${texto}%"`;
+    const condiciones = [
+      `nombre.ilike.${patronTexto}`,
+      `correo.ilike.${patronTexto}`,
+      `empresa.ilike.${patronTexto}`
+    ];
+    const numero = soloDigitos(filtroUsuarios);
+    if (numero) condiciones.push(`numero.ilike."%${numero}%"`);
+    consulta = consulta.or(condiciones.join(","));
+  }
+
+  const { data, error, count } = await consulta.range(inicio, inicio + porPagina - 1);
+  if (solicitudActual !== solicitudesUsuarios) return;
+  if (error) {
+    cont.innerHTML = `<div class="vacio">${escapeHtml(error.message)}</div>`;
+    document.getElementById("usuariosInfoPagina").textContent = "No se pudieron cargar los usuarios.";
+    document.getElementById("btnUsuariosAnterior").disabled = true;
+    document.getElementById("btnUsuariosSiguiente").disabled = true;
+    return;
+  }
+
+  const total = count ?? (data || []).length;
+  const paginas = Math.max(1, Math.ceil(total / porPagina));
+  if (paginaUsuarios >= paginas) {
+    paginaUsuarios = paginas - 1;
+    return cargarUsuarios();
+  }
   const usuarios = data || [];
-  document.getElementById("userTotal").textContent = usuarios.length;
+  document.getElementById("userTotal").textContent = total;
   document.getElementById("userActive").textContent = usuarios.filter(u => u.activo).length;
   document.getElementById("userBanned").textContent = usuarios.filter(u => u.activo === false).length;
   document.getElementById("userVerified").textContent = usuarios.filter(u => u.verificado).length;
-  const visibles = pestanaUsuarios === "banned"
-    ? usuarios.filter(u => u.activo === false)
-    : usuarios;
 
-  const filas = visibles.map(u => `<tr>
+  const filas = usuarios.map(u => `<tr>
     <td>${escapeHtml(u.nombre || "-")}</td>
     <td>+${escapeHtml(u.numero || "-")}</td>
     <td>${escapeHtml(u.correo || "-")}</td>
@@ -404,15 +445,54 @@ async function cargarUsuarios() {
       </button>
     </td>
   </tr>`);
-  tabla(cont, ["Nombre", "Numero", "Correo", "Empresa", "Sello", "Rol", "Estado", ""], filas);
+  if (!filas.length && filtroUsuarios) {
+    cont.innerHTML = `<div class="vacio">No hay usuarios que coincidan con "${escapeHtml(filtroUsuarios)}".</div>`;
+  } else {
+    tabla(cont, ["Nombre", "Numero", "Correo", "Empresa", "Sello", "Rol", "Estado", ""], filas);
+  }
+
+  const desde = total ? inicio + 1 : 0;
+  const hasta = total ? Math.min(inicio + usuarios.length, total) : 0;
+  document.getElementById("usuariosInfoPagina").textContent =
+    `Mostrando ${desde}-${hasta} de ${total} usuarios`;
+  document.getElementById("usuariosPaginaActual").textContent =
+    `Página ${paginaUsuarios + 1} de ${paginas}`;
+  document.getElementById("btnUsuariosAnterior").disabled = paginaUsuarios === 0;
+  document.getElementById("btnUsuariosSiguiente").disabled = paginaUsuarios >= paginas - 1;
 }
 
 document.getElementById("menuUsuarios").onclick = e => {
   const boton = e.target.closest("button[data-user-tab]");
   if (!boton) return;
   pestanaUsuarios = boton.dataset.userTab;
+  paginaUsuarios = 0;
   document.querySelectorAll("#menuUsuarios button").forEach(b =>
     b.classList.toggle("on", b.dataset.userTab === pestanaUsuarios));
+  CARGADORES.usuarios();
+};
+
+function aplicarBusquedaUsuarios() {
+  filtroUsuarios = document.getElementById("buscarUsuarios").value.trim();
+  paginaUsuarios = 0;
+  CARGADORES.usuarios();
+}
+
+document.getElementById("btnBuscarUsuarios").onclick = aplicarBusquedaUsuarios;
+document.getElementById("buscarUsuarios").onkeydown = e => {
+  if (e.key === "Enter") aplicarBusquedaUsuarios();
+};
+document.getElementById("usuariosPorPagina").onchange = () => {
+  paginaUsuarios = 0;
+  CARGADORES.usuarios();
+};
+document.getElementById("btnUsuariosAnterior").onclick = () => {
+  if (paginaUsuarios > 0) {
+    paginaUsuarios -= 1;
+    CARGADORES.usuarios();
+  }
+};
+document.getElementById("btnUsuariosSiguiente").onclick = () => {
+  paginaUsuarios += 1;
   CARGADORES.usuarios();
 };
 
